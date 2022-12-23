@@ -29,9 +29,9 @@ protected:
 	// -----Components for player characters-----
 	// Spring arm and camera for players
 	UPROPERTY(VisibleAnywhere, Category = "Components")
-		class USpringArmComponent* SpringArm;
+	class USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere, Category = "Components")
-		class UCameraComponent* Camera;
+	class UCameraComponent* Camera;
 
 private:
 	// -----Functions and properties for player character controls-----
@@ -42,5 +42,5 @@ private:
 	void LookUpRate(float AxisValue);
 	void LookRightRate(float AxisValue);
 	UPROPERTY(EditAnywhere, Category = "Components")
-		float RotationRate = 70.f;
+	float RotationRate = 70.f;
 };
