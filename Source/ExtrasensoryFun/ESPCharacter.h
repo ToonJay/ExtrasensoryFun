@@ -36,6 +36,9 @@ private:
 	void Grab();
 	void Release();
 	void Throw();
+	// Returns true if grabbing at least 1 object
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	bool IsGrabbingObject();
 
 	// -----Telekinesis properties used for the telekinesis functions-----
 	UPROPERTY(VisibleAnywhere, Category = "Telekinesis")
@@ -58,4 +61,16 @@ private:
 	// Relative position from the character for each object it's grabbing 
 	UPROPERTY(VisibleAnywhere, Category = "Physics Handles")
 	TArray<FVector> PositionsFromCharacter;
+
+	// -----Properties and functions for telekinesis FX-----
+	// Particles for telekinesis casting effect
+	UPROPERTY(EditAnywhere, Category = "Telekinesis")
+	UParticleSystem* MuzzleCast;
+	UParticleSystemComponent* CastEmitter;
+	// Decals for objects being grabbed
+	TArray<UDecalComponent*> TelekinesisDecals;
+	UPROPERTY(EditAnywhere, Category = "Telekinesis")
+	UMaterialInstance* TelekinesisDecalMaterial;
+	// Attaches a decal to an object being grabbed
+	void AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, int Index);
 };

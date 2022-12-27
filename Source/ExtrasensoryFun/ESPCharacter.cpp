@@ -6,6 +6,10 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "Engine/DecalActor.h"
+#include "Components/DecalComponent.h"
 
 // Default constructor
 AESPCharacter::AESPCharacter() {
@@ -41,6 +45,18 @@ void AESPCharacter::Tick(float DeltaTime) {
 			PhysicsHandles[i]->SetTargetLocationAndRotation(TargetLocation, SpringArm->GetTargetRotation());
 		}
 	}
+	// Activate the emitter when grabbing at least 1 object, deactivate when not
+	if (CastEmitter) {
+		if (IsGrabbingObject()) {
+			if (!CastEmitter->IsActive()) {
+				CastEmitter->Activate();
+			}
+		} else {
+			CastEmitter->Deactivate();
+		}
+	} else {
+		UE_LOG(LogTemp, Error, TEXT("No particle effect on MuzzleCast!"));
+	}
 }
 
 // Called when the game starts or when spawned
@@ -48,11 +64,25 @@ void AESPCharacter::BeginPlay() {
 	Super::BeginPlay();
 	// Assign all physics handle components to the PhysicsHandles TArray
 	GetComponents(PhysicsHandles);
-	// For each physics handle, set its interpolation speed and add an element to the PositionsFromCharacter TArray.
+	// For each physics handle, set its interpolation speed and add an element to the PositionsFromCharacter and TelekinesisDecals TArrays
 	for (UPhysicsHandleComponent* PhysicsHandle : PhysicsHandles) {
 		PhysicsHandle->SetInterpolationSpeed(InterpolationSpeed);
 		PositionsFromCharacter.Add(FVector(0.f));
+		TelekinesisDecals.Add(nullptr);
 	}
+	// Set emitter for character's right arm for telekinesis
+	CastEmitter = UGameplayStatics::SpawnEmitterAttached(
+		MuzzleCast,
+		GetMesh(),
+		TEXT("Muzzle_01"),
+		FVector(ForceInit),
+		FRotator::ZeroRotator,
+		FVector(1.f),
+		EAttachLocation::KeepRelativeOffset,
+		false,
+		EPSCPoolMethod::None,
+		false
+	); 
 }
 
 /**
@@ -127,7 +157,7 @@ void AESPCharacter::Grab() {
 	if (GetGrabbableObjectsInReach(HitResults)) {
 		// Sort hit results in ascending distance from the character
 		SortHitResults(HitResults);
-		// Iterate through each result and get the hit result, component and actor
+		// Iterate through hit results and get the hit result, component and actor
 		for (int i = 0; i < HitResults.Num(); i++) {
 			FHitResult HitResult = HitResults[i];
 			UPrimitiveComponent* HitComponent = HitResult.GetComponent();
@@ -148,15 +178,13 @@ void AESPCharacter::Grab() {
 						HitResult.ImpactPoint,
 						Camera->GetComponentRotation()
 					);
-					// Make the character ignore the collision of the object
-					// This is so then the character doesn't get pushed around by the objects it's manipulating
+					AttachTelekinesisDecal(HitComponent, y);
+					// Make the character ignore the collision of the object so the character doesn't get pushed around by the objects it's manipulating
 					this->MoveIgnoreActorAdd(HitActor);
-					// Make the grabbed objects overlap with the camera channel
-					// This is so then the spring arm doesn't retract for grabbed objects that end up behind the character
+					// Make the grabbed objects overlap with the camera channel so the spring arm doesn't retract for grabbed objects that end up behind the character
 					HitComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECR_Overlap);
-					// Record object positions relative to the character
+					// Record object positions relative to the character upon grabbing them
 					PositionsFromCharacter[i] = HitComponent->GetComponentTransform().GetRelativeTransform(GetActorTransform()).GetLocation();
-					UE_LOG(LogTemp, Warning, TEXT("%s"), *HitComponent->GetComponentTransform().GetRelativeTransform(GetActorTransform()).GetLocation().ToString());
 					break;
 				}
 			}
@@ -174,6 +202,7 @@ void AESPCharacter::Release() {
 			GrabbedComponent->WakeAllRigidBodies(); // In case the object is sleeping
 			GrabbedComponent->GetOwner()->Tags.Remove("Grabbed");
 			PhysicsHandles[i]->ReleaseComponent();
+			TelekinesisDecals[i]->DestroyComponent();
 		}
 	}
 }
@@ -181,30 +210,72 @@ void AESPCharacter::Release() {
 /**
 * Throws one of the objects the character is currently manipulating.
 * In particular, throws the object farthest frontwards from the character's aim.
+* The reason we do this is to prevent a grabbed object being thrown towards another grabbed object as much as possible.
 */
 void AESPCharacter::Throw() {
-	float farthestDistance = -10000; // Since grabbed objects can end up behind the player
-	int farthestIndex = 0;
-	// Iterate through each physics handle component and check all the objects currently being grabbed
-	for (int i = 0; i < PhysicsHandles.Num(); i++) {
-		if (PhysicsHandles[i]->GetGrabbedComponent()) {
-			// Get the grabbed object's *current* location relative to the character.
-			// Because the object may be in a different position from the one recorded in the TArray that we constantly move the object to in Tick
-			FVector PositionFromCharacter = PhysicsHandles[i]->GetGrabbedComponent()->
-				GetComponentTransform().GetRelativeTransform(GetActorTransform()).GetLocation();
-			// Eventually gets us the index of the physics handle component that has the object that's farthest forwards from the character's aim
-			if (PositionFromCharacter.X - FMath::Abs(PositionFromCharacter.Y) > farthestDistance) {
-				farthestIndex = i;
-				farthestDistance = PositionFromCharacter.X - FMath::Abs(PositionFromCharacter.Y);
+	float farthestDistance = -10000; // A negative number since grabbed objects can end up behind the player
+	float farthestIndex = 0;
+	// Check if there's currently at least one object being grabbed
+	if (IsGrabbingObject()) {
+		UPrimitiveComponent* FarthestGrabbedComponent = nullptr;
+		// Iterate through each physics handle component and check all the objects currently being grabbed
+		for (int i = 0; i < PhysicsHandles.Num(); i++) {
+			if (UPrimitiveComponent * GrabbedComponent = PhysicsHandles[i]->GetGrabbedComponent()) {
+				// Get the grabbed object's *current* location relative to the character.
+				// Because the object may be in a different position from the one recorded in the TArray that we constantly move the object to in Tick
+				FVector PositionFromCharacter = GrabbedComponent->GetComponentTransform().GetRelativeTransform(GetActorTransform()).GetLocation();
+				// Eventually gets us the physics handle component that has the object that's farthest frontwards from the character's aim
+				if (PositionFromCharacter.X - FMath::Abs(PositionFromCharacter.Y) > farthestDistance) {
+					FarthestGrabbedComponent = GrabbedComponent;
+					farthestIndex = i;
+					farthestDistance = PositionFromCharacter.X - FMath::Abs(PositionFromCharacter.Y);
+				}
 			}
 		}
-	}
-	// If there's at least 1 object being grabbed, throw the one that's farthest forwards from the character's aim using the farthestIndex
-	if (UPrimitiveComponent* FurthestGrabbedComponent = PhysicsHandles[farthestIndex]->GetGrabbedComponent()) {
-		FurthestGrabbedComponent->WakeAllRigidBodies(); // In case the object is sleeping
-		FurthestGrabbedComponent->GetOwner()->Tags.Remove("Grabbed");
+		FarthestGrabbedComponent->WakeAllRigidBodies(); // In case the object is sleeping
+		FarthestGrabbedComponent->GetOwner()->Tags.Remove("Grabbed");
 		// Unlike in release, we only release one object and add an impulse
 		PhysicsHandles[farthestIndex]->ReleaseComponent();
-		FurthestGrabbedComponent->AddImpulse(Camera->GetForwardVector() * ThrowForce, NAME_None, true);
+		FarthestGrabbedComponent->AddImpulse(Camera->GetForwardVector() * ThrowForce, NAME_None, true);
+		TelekinesisDecals[farthestIndex]->DestroyComponent();
+	}
+}
+
+// Returns true if character is grabbing at least 1 object
+bool AESPCharacter::IsGrabbingObject() {
+	for (UPhysicsHandleComponent* PhysicsHandle : PhysicsHandles) {
+		if (PhysicsHandle->GetGrabbedComponent()) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+* Attaches a decal to an object being grabbed
+* 
+* @param HitComponent, the component being grabbed
+* @param Index, index of TelekinesisDecals which corresponds to the index of PhysicsHandles
+*/
+void AESPCharacter::AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, int Index) {
+	if (TelekinesisDecalMaterial) {
+		HitComponent->SetReceivesDecals(true); // Make sure the grabbed object can receive decals
+		// Get the placement extent's box of the component
+		// Unlike the collision box extent, it doesn't change even after the object is rotated and isn't affected by scale
+		FVector ComponentBox = HitComponent->GetPlacementExtent().BoxExtent;
+		// Spawn, register and set the material instance for the decal component
+		TelekinesisDecals[Index] = NewObject<UDecalComponent>(HitComponent, UDecalComponent::StaticClass(), TEXT("Telekinesis Decal"));
+		TelekinesisDecals[Index]->RegisterComponent();
+		TelekinesisDecals[Index]->SetDecalMaterial(TelekinesisDecalMaterial);
+		// Make the Decal a little bit bigger than the component box
+		// Divide the addition by the component's scale since DecalSize gets multiplied by it when attached to the component
+		// That way, we're aways adding 1.f to the decal's size no matter the component's scale
+		TelekinesisDecals[Index]->DecalSize = ComponentBox + (FVector(1.f) / HitComponent->GetComponentScale());
+		// Decal's center is at the bottom of the object, so it needs to move by the size of the component's box's z axis
+		TelekinesisDecals[Index]->AddRelativeLocation(FVector(0.f, 0.f, ComponentBox.Z));
+		// Attach decal component to the grabbed component
+		TelekinesisDecals[Index]->AttachToComponent(HitComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	} else {
+		UE_LOG(LogTemp, Error, TEXT("No decal material set!"));
 	}
 }
