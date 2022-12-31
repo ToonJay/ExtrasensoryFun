@@ -46,30 +46,42 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAxis(TEXT("LookRightRate"), this, &ABaseCharacter::LookRightRate);
 }
 
-// Move character forwards or backwards based on AxisValue from player input
+/** 
+* Move character forwards or backwards based on AxisValue from player input
+*
+* @param AxisValue, Movement input to apply
+*/
 void ABaseCharacter::MoveForward(float AxisValue) {
 	AddMovementInput(GetActorForwardVector() * AxisValue);
 }
 
-// Move character left or right based on AxisValue from player input
+/**
+* Strafe character left/right
+* 
+* @param AxisValue, Movement input to apply
+*/
 void ABaseCharacter::MoveRight(float AxisValue) {
 	AddMovementInput(GetActorRightVector() * AxisValue);
 }
 
 /**
-* Rotate camera up or down based on AxisValue from player input.
-* Rotates at RotationRate per second.
+* Rotate camera up/down at RotationRate per second.
 * For gamepads only.
+* 
+* @param AxisValue, Rotation input to apply
 */
 void ABaseCharacter::LookUpRate(float AxisValue) {
+	// calculate delta for this frame from the rate information
 	AddControllerPitchInput(AxisValue * RotationRate * GetWorld()->GetDeltaSeconds());
 }
 
 /**
-* Rotate camera left or right based on AxisValue from player input.
-* Rotates at RotationRate per second.
+* Rotate camera left/right at RotationRate per second.
 * For gamepads only.
+* 
+* @param AxisValue, Rotation input to apply
 */
 void ABaseCharacter::LookRightRate(float AxisValue) {
+	// calculate delta for this frame from the rate information
 	AddControllerPitchInput(AxisValue * RotationRate * GetWorld()->GetDeltaSeconds());
 }

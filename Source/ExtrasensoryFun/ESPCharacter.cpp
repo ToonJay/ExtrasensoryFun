@@ -13,6 +13,9 @@
 
 // Default constructor
 AESPCharacter::AESPCharacter() {
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	PrimaryActorTick.bCanEverTick = true;
+
 	// Create physics handle components for the character according to ObjectGrabLimit and number them
 	for (int i = 0; i < ObjectGrabLimit; i++) {
 		CreateDefaultSubobject<UPhysicsHandleComponent>(FName("Physics Handle " + FString::FromInt(i + 1)));
@@ -45,6 +48,7 @@ void AESPCharacter::Tick(float DeltaTime) {
 			PhysicsHandles[i]->SetTargetLocationAndRotation(TargetLocation, SpringArm->GetTargetRotation());
 		}
 	}
+
 	// Activate the emitter when grabbing at least 1 object, deactivate when not
 	if (CastEmitter) {
 		if (IsGrabbingObject()) {
@@ -70,6 +74,7 @@ void AESPCharacter::BeginPlay() {
 		PositionsFromCharacter.Add(FVector(0.f));
 		TelekinesisDecals.Add(nullptr);
 	}
+
 	// Set emitter for character's right arm for telekinesis
 	CastEmitter = UGameplayStatics::SpawnEmitterAttached(
 		MuzzleCast,
@@ -91,7 +96,7 @@ void AESPCharacter::BeginPlay() {
 * use the overlaps to detect the grabbable objects.
 * Grabbable objects are those that overlap with the Telekinesis collision trace channel.
 * Uses GrabRange and GrabRadius for the sweep.
-*
+* 
 * Returns true if at least 1 object/overlap is found.
 */
 bool AESPCharacter::GetGrabbableObjectsInReach(TArray<FHitResult>& OutHitResults) const {
@@ -99,8 +104,7 @@ bool AESPCharacter::GetGrabbableObjectsInReach(TArray<FHitResult>& OutHitResults
 	* Start from the character's location + the GrabRadius in the forward direction of the camera.
 	* This is so that the sphere always starts from the front of the character instead of within (if aiming forward).
 	* We also add the CapsuleHalfHeight in proportion to how far we aim the camera up or down. Like this,
-	* the sphere starts from the top of our head if we aim upwards, or from the bottom of our feet if we aim downwards,
-	* and anything in-between.
+	* the sphere starts from the top of our head if we aim upwards, from the bottom of our feet if we aim downwards, and anything in-between.
 	*/
 	float CapsuleHalfHeight = this->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	FVector Start = GetActorLocation() + Camera->GetForwardVector() * (GrabRadius + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
@@ -110,6 +114,8 @@ bool AESPCharacter::GetGrabbableObjectsInReach(TArray<FHitResult>& OutHitResults
 	// These parameters will make the sphere sweep inclube overlaps.
 	FCollisionQueryParams Params = FCollisionQueryParams();
 	Params.bFindInitialOverlaps = true;
+
+	// Sphere sweep
 	DrawDebugSphere(GetWorld(), End, GrabRadius, 20, FColor::Red, true); // For a visual on the sweep
 	GetWorld()->SweepMultiByChannel(
 		OutHitResults,
@@ -157,11 +163,13 @@ void AESPCharacter::Grab() {
 	if (GetGrabbableObjectsInReach(HitResults)) {
 		// Sort hit results in ascending distance from the character
 		SortHitResults(HitResults);
+
 		// Iterate through hit results and get the hit result, component and actor
 		for (int i = 0; i < HitResults.Num(); i++) {
 			FHitResult HitResult = HitResults[i];
 			UPrimitiveComponent* HitComponent = HitResult.GetComponent();
 			AActor* HitActor = HitResult.GetActor();
+
 			// For each hit result/object, iterate through the physics handle components
 			for (int y = 0; y < PhysicsHandles.Num(); y++) {
 				// Make sure that the physics handle is available and that the hit result/object is not already being grabbed
@@ -178,6 +186,8 @@ void AESPCharacter::Grab() {
 						HitResult.ImpactPoint,
 						Camera->GetComponentRotation()
 					);
+					
+					// Attach decal component
 					AttachTelekinesisDecal(HitComponent, y);
 					// Make the character ignore the collision of the object so the character doesn't get pushed around by the objects it's manipulating
 					this->MoveIgnoreActorAdd(HitActor);
@@ -215,6 +225,7 @@ void AESPCharacter::Release() {
 void AESPCharacter::Throw() {
 	float farthestDistance = -10000; // A negative number since grabbed objects can end up behind the player
 	float farthestIndex = 0;
+
 	// Check if there's currently at least one object being grabbed
 	if (IsGrabbingObject()) {
 		UPrimitiveComponent* FarthestGrabbedComponent = nullptr;
@@ -232,6 +243,7 @@ void AESPCharacter::Throw() {
 				}
 			}
 		}
+
 		FarthestGrabbedComponent->WakeAllRigidBodies(); // In case the object is sleeping
 		FarthestGrabbedComponent->GetOwner()->Tags.Remove("Grabbed");
 		// Unlike in release, we only release one object and add an impulse
@@ -263,6 +275,7 @@ void AESPCharacter::AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, in
 		// Get the placement extent's box of the component
 		// Unlike the collision box extent, it doesn't change even after the object is rotated and isn't affected by scale
 		FVector ComponentBox = HitComponent->GetPlacementExtent().BoxExtent;
+
 		// Spawn, register and set the material instance for the decal component
 		TelekinesisDecals[Index] = NewObject<UDecalComponent>(HitComponent, UDecalComponent::StaticClass(), TEXT("Telekinesis Decal"));
 		TelekinesisDecals[Index]->RegisterComponent();

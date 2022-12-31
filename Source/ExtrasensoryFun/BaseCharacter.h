@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "BaseCharacter.generated.h"
 
+class USpringArmComponent;
+class UCameraComponent;
 /**
  * This class is for the basic functionality for any character.
  * Responsible for player inputs as well as basic data that can be useful for
@@ -23,15 +25,20 @@ public:
 	// Called to bind functionality to player input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	// Getter methods
+	USpringArmComponent* GetSpringArm() const { return SpringArm; }
+	UCameraComponent* GetCamera() const  { return Camera; }
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
 	// -----Components for player characters-----
 	// Spring arm and camera for players
 	UPROPERTY(VisibleAnywhere, Category = "Components")
-	class USpringArmComponent* SpringArm;
+	USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere, Category = "Components")
-	class UCameraComponent* Camera;
+	UCameraComponent* Camera;
 
 private:
 	// -----Functions and properties for player character controls-----
