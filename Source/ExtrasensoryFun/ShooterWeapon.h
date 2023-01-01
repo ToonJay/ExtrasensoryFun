@@ -29,10 +29,16 @@ public:
 	AController* GetOwnerController() const { return GetOwner()->GetInstigatorController(); }
 
 private:
+	// Components and FX
 	UPROPERTY(VisibleAnywhere)
 	USceneComponent* Root;
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* WeaponMesh;
+	UPROPERTY(EditAnywhere)
+	UParticleSystem* MuzzleFlash;
+
+	// Projectile class
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AShooterProjectile> ShooterProjectileClass;
+	
 };

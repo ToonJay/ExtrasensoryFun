@@ -29,6 +29,7 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
+	// Weapon class
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AShooterWeapon> ShooterWeaponClass;
 	UPROPERTY()

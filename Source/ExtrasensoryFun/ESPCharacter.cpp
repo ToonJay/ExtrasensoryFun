@@ -163,7 +163,6 @@ void AESPCharacter::Grab() {
 	if (GetGrabbableObjectsInReach(HitResults)) {
 		// Sort hit results in ascending distance from the character
 		SortHitResults(HitResults);
-
 		// Iterate through hit results and get the hit result, component and actor
 		for (int i = 0; i < HitResults.Num(); i++) {
 			FHitResult HitResult = HitResults[i];

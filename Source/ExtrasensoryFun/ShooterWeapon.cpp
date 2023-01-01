@@ -3,6 +3,7 @@
 
 #include "ShooterWeapon.h"
 #include "ShooterProjectile.h"
+#include <Kismet/GameplayStatics.h>
 
 // Default constructor
 AShooterWeapon::AShooterWeapon() {
@@ -33,6 +34,11 @@ void AShooterWeapon::FireWeapon() {
 		AShooterProjectile* Projectile = GetWorld()->SpawnActor<AShooterProjectile>(ShooterProjectileClass, ProjectileSpawnPoint, ShotDirection);
 		Projectile->SetOwner(this);
 		Projectile->SetActorRelativeRotation(ShotDirection + FRotator(-90.f, 0.f, -90.f)); // We add that FRotator because of the character's and weapon's rotation
+
+		// Play FX
+		if (MuzzleFlash) {
+			UGameplayStatics::SpawnEmitterAttached(MuzzleFlash, WeaponMesh, TEXT("MuzzleFlashSocket"));
+		}
 	}
 }
 

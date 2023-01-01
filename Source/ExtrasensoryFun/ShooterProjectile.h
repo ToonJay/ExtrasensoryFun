@@ -28,14 +28,21 @@ protected:
 	virtual void BeginPlay() override;
 	
 private:
+	// Projectile components and FX
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* ProjectileMesh;
 	UPROPERTY(VisibleAnywhere)
 	UProjectileMovementComponent* ProjectileMovementComponent;
+	UPROPERTY(EditAnywhere)
+	UParticleSystemComponent* TrailParticles;
+	UPROPERTY(EditAnywhere)
+	UParticleSystem* ExplosionFX;
 
 	// Projectile properties
 	UPROPERTY(EditAnywhere, Category = "Combat")
-	float Damage = 50.f;
+	float Damage = 100.f;
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float ExplosionRadius = 300.f;
 
 	// OnHit event
 	UFUNCTION()
