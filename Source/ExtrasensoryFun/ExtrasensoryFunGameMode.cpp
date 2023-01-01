@@ -1,5 +1,5 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 
-#include "ExtrasensoryFunGameModeBase.h"
+#include "ExtrasensoryFunGameMode.h"
 

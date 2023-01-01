@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "ESPPlayerController.generated.h"
+#include "ExtrasensoryFunPlayerController.generated.h"
 
 class UUserWidget;
 
@@ -12,7 +12,7 @@ class UUserWidget;
  * 
  */
 UCLASS()
-class EXTRASENSORYFUN_API AESPPlayerController : public APlayerController
+class EXTRASENSORYFUN_API AExtrasensoryFunPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 	

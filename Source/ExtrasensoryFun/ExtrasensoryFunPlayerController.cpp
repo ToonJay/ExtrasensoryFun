@@ -1,10 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "ESPPlayerController.h"
+#include "ExtrasensoryFunPlayerController.h"
 #include "Blueprint/UserWidget.h"
 
-void AESPPlayerController::BeginPlay() {
+void AExtrasensoryFunPlayerController::BeginPlay() {
 	Super::BeginPlay();
 	HUD = CreateWidget(this, HUDClass);
 	if (HUD) {

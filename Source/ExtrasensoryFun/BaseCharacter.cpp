@@ -4,6 +4,7 @@
 #include "BaseCharacter.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
+#include "HealthComponent.h"
 
 // Default constructor
 ABaseCharacter::ABaseCharacter() {
@@ -17,6 +18,9 @@ ABaseCharacter::ABaseCharacter() {
 	// Create the camera and attach it to the spring arm
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);
+
+	// Create health component
+	Health = CreateDefaultSubobject<UHealthComponent>(TEXT("Health"));
 }
 
 // Called when the game starts or when spawned

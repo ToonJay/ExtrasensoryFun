@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "ExtrasensoryFunGameModeBase.generated.h"
+#include "ExtrasensoryFunGameMode.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class EXTRASENSORYFUN_API AExtrasensoryFunGameModeBase : public AGameModeBase
+class EXTRASENSORYFUN_API AExtrasensoryFunGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 	

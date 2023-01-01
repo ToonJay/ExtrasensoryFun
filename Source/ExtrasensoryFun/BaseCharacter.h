@@ -8,6 +8,7 @@
 
 class USpringArmComponent;
 class UCameraComponent;
+class UHealthComponent;
 /**
  * This class is for the basic functionality for any character.
  * Responsible for player inputs as well as basic data that can be useful for
@@ -33,12 +34,15 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	// -----Components for player characters-----
-	// Spring arm and camera for players
+	// -----Components-----
+	// Spring and camera components for player characters
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UCameraComponent* Camera;
+	// Health component
+	UPROPERTY(EditAnywhere, Category = "Components")
+	UHealthComponent* Health;
 
 private:
 	// -----Functions and properties for player character controls-----
