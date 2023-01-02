@@ -35,13 +35,25 @@ void UHealthComponent::BeginPlay()
 	
 }
 
+float UHealthComponent::GetHealthPercent() const {
+	return Health / MaxHealth;
+}
+
+bool UHealthComponent::IsDead() const {
+	return Health <= 0.f;
+}
+
 void UHealthComponent::DamageTaken(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* Instigator, AActor* DamageCauser) {
 	// Check if there's damage and if the actor can die
 	if (Damage <= 0.f || !CanDie) return;
-
+	UE_LOG(LogTemp, Warning, TEXT("Damage: %f"), Damage);
 	// Apply damage
 	Health -= Damage;
-	UE_LOG(LogTemp, Warning, TEXT("Health: %f"), Health)
+	UE_LOG(LogTemp, Warning, TEXT("Health Remaining: %f"), Health);
+	// Check for death
+	if (IsDead()) {
+		ExtrasensoryFunGameMode->ActorDied(DamagedActor);
+	}
 }
 
 

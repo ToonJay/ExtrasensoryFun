@@ -30,6 +30,8 @@ public:
 	USpringArmComponent* GetSpringArm() const { return SpringArm; }
 	UCameraComponent* GetCamera() const  { return Camera; }
 
+	void HandleDeath();
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

@@ -14,4 +14,6 @@ class EXTRASENSORYFUN_API AExtrasensoryFunGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 	
+public:
+	void ActorDied(AActor* DeadActor);
 };

@@ -24,12 +24,19 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
-	// Health properties
+	// -----Health and death properties and functions-----
+	// Health
 	UPROPERTY(EditAnywhere)
 	float MaxHealth = 100.f;
 	float Health = 0.f;
+	UFUNCTION(BlueprintPure)
+	float GetHealthPercent() const;
+	// Death
 	UPROPERTY(EditAnywhere)
 	bool CanDie = true;
+	UFUNCTION(BlueprintPure)
+	bool IsDead() const;
+	
 
 	// Process damage taken
 	UFUNCTION()

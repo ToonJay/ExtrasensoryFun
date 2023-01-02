@@ -5,6 +5,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "HealthComponent.h"
+#include "Components/CapsuleComponent.h"
 
 // Default constructor
 ABaseCharacter::ABaseCharacter() {
@@ -21,6 +22,12 @@ ABaseCharacter::ABaseCharacter() {
 
 	// Create health component
 	Health = CreateDefaultSubobject<UHealthComponent>(TEXT("Health"));
+}
+
+// Handle character death
+void ABaseCharacter::HandleDeath() {
+	DetachFromControllerPendingDestroy();
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // Called when the game starts or when spawned
