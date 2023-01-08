@@ -22,12 +22,18 @@ ABaseCharacter::ABaseCharacter() {
 
 	// Create health component
 	Health = CreateDefaultSubobject<UHealthComponent>(TEXT("Health"));
+
+	GetMesh()->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECR_Block);
 }
 
 // Handle character death
 void ABaseCharacter::HandleDeath() {
+	// Detach controller
 	DetachFromControllerPendingDestroy();
+	// Remove collisions
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	// Set collision response to TelekinesisAttack tracing channel to ignore
+	GetMesh()->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECR_Ignore);
 }
 
 // Called when the game starts or when spawned

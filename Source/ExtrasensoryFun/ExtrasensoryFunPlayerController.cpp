@@ -6,8 +6,4 @@
 
 void AExtrasensoryFunPlayerController::BeginPlay() {
 	Super::BeginPlay();
-	HUD = CreateWidget(this, HUDClass);
-	if (HUD) {
-		HUD->AddToViewport();
-	}
 }

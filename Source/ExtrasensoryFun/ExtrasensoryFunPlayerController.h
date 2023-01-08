@@ -21,9 +21,9 @@ class EXTRASENSORYFUN_API AExtrasensoryFunPlayerController : public APlayerContr
 	virtual void BeginPlay() override;
 
 private:
+	// Hud class and instance
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<UUserWidget> HUDClass;
-
 	UPROPERTY()
 	UUserWidget* HUD;
 };

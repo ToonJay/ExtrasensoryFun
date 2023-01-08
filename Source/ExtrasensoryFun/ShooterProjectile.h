@@ -20,7 +20,8 @@ public:
 
 	// Getter methods
 	UStaticMeshComponent* GetMesh() { return ProjectileMesh; }
-	UProjectileMovementComponent* GetMovementComponent() { return ProjectileMovementComponent; }
+	UProjectileMovementComponent* GetMovementComp() { return MovementComp; }
+	UParticleSystemComponent* GetTrailFX() { return TrailFX; }
 	float GetDamage() const { return Damage; }
 
 protected:
@@ -28,17 +29,18 @@ protected:
 	virtual void BeginPlay() override;
 	
 private:
-	// Projectile components and FX
+	//-----Projectile properties and components-----
+	// Components
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* ProjectileMesh;
 	UPROPERTY(VisibleAnywhere)
-	UProjectileMovementComponent* ProjectileMovementComponent;
-	UPROPERTY(EditAnywhere)
-	UParticleSystemComponent* TrailParticles;
-	UPROPERTY(EditAnywhere)
+	UProjectileMovementComponent* MovementComp;
+	// Particles
+	UPROPERTY(VisibleAnywhere, Category = "Particles")
+	UParticleSystemComponent* TrailFX;
+	UPROPERTY(VisibleAnywhere, Category = "Particles")
 	UParticleSystem* ExplosionFX;
-
-	// Projectile properties
+	// Combat properties
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float Damage = 100.f;
 	UPROPERTY(EditAnywhere, Category = "Combat")

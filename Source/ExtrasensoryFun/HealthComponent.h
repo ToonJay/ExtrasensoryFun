@@ -30,14 +30,13 @@ private:
 	float MaxHealth = 100.f;
 	float Health = 0.f;
 	UFUNCTION(BlueprintPure)
-	float GetHealthPercent() const;
+	float GetHealthPercent() const { return Health / MaxHealth; }
 	// Death
 	UPROPERTY(EditAnywhere)
 	bool CanDie = true;
 	UFUNCTION(BlueprintPure)
-	bool IsDead() const;
+	bool IsDead() const { return Health <= 0.f; }
 	
-
 	// Process damage taken
 	UFUNCTION()
 	void DamageTaken(AActor* DamagedActor, float Damage, const UDamageType* DamageType, class AController* Instigator, AActor* DamageCauser);
