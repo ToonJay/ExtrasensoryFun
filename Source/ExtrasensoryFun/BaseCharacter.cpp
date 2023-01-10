@@ -6,15 +6,18 @@
 #include "Camera/CameraComponent.h"
 #include "HealthComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Default constructor
 ABaseCharacter::ABaseCharacter() {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Create the spring, attach it to the character's capsule
+	// Create the spring, attach it to the character's capsule, and set properties
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("Spring Arm"));
 	SpringArm->SetupAttachment(RootComponent);
+	SpringArm->bUsePawnControlRotation = false;
+	SpringArm->bEnableCameraRotationLag = true;
 
 	// Create the camera and attach it to the spring arm
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
@@ -23,17 +26,12 @@ ABaseCharacter::ABaseCharacter() {
 	// Create health component
 	Health = CreateDefaultSubobject<UHealthComponent>(TEXT("Health"));
 
+	// Set to block the TelekinesisAttack trace channel
 	GetMesh()->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECR_Block);
-}
 
-// Handle character death
-void ABaseCharacter::HandleDeath() {
-	// Detach controller
-	DetachFromControllerPendingDestroy();
-	// Remove collisions
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	// Set collision response to TelekinesisAttack tracing channel to ignore
-	GetMesh()->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECR_Ignore);
+	// Orient rotation to movement and set Yaw Rotation Rate
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->RotationRate.Yaw = 540.f;
 }
 
 // Called when the game starts or when spawned
@@ -53,6 +51,7 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 	// Character movement player input binds
 	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Released, this, &ACharacter::StopJumping);
 	PlayerInputComponent->BindAxis(TEXT("MoveForward"), this, &ABaseCharacter::MoveForward);
 	PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &ABaseCharacter::MoveRight);
 	// Camera rotation player input binds for mouse
@@ -63,13 +62,26 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAxis(TEXT("LookRightRate"), this, &ABaseCharacter::LookRightRate);
 }
 
+// Handle character death
+void ABaseCharacter::HandleDeath() {
+	// Detach controller
+	DetachFromControllerPendingDestroy();
+	// Remove collisions
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	// Set collision response to TelekinesisAttack tracing channel to ignore
+	GetMesh()->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECR_Ignore);
+}
+
 /** 
 * Move character forwards or backwards based on AxisValue from player input
 *
 * @param AxisValue, Movement input to apply
 */
 void ABaseCharacter::MoveForward(float AxisValue) {
-	AddMovementInput(GetActorForwardVector() * AxisValue);
+	FRotator const ControlSpaceRot = Controller->GetControlRotation();
+
+	// transform to world space and add it
+	AddMovementInput(FRotationMatrix(ControlSpaceRot).GetScaledAxis(EAxis::X), AxisValue);
 }
 
 /**
@@ -78,7 +90,10 @@ void ABaseCharacter::MoveForward(float AxisValue) {
 * @param AxisValue, Movement input to apply
 */
 void ABaseCharacter::MoveRight(float AxisValue) {
-	AddMovementInput(GetActorRightVector() * AxisValue);
+	FRotator const ControlSpaceRot = Controller->GetControlRotation();
+
+	// transform to world space and add it
+	AddMovementInput(FRotationMatrix(ControlSpaceRot).GetScaledAxis(EAxis::Y), AxisValue);
 }
 
 /**
@@ -100,5 +115,5 @@ void ABaseCharacter::LookUpRate(float AxisValue) {
 */
 void ABaseCharacter::LookRightRate(float AxisValue) {
 	// calculate delta for this frame from the rate information
-	AddControllerPitchInput(AxisValue * RotationRate * GetWorld()->GetDeltaSeconds());
+	AddControllerYawInput(AxisValue * RotationRate * GetWorld()->GetDeltaSeconds());
 }

@@ -21,16 +21,6 @@ class EXTRASENSORYFUN_API ABaseCharacter : public ACharacter {
 public:
 	// Default constructor
 	ABaseCharacter();
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-	// Called to bind functionality to player input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-	// Getter methods
-	USpringArmComponent* GetSpringArm() const { return SpringArm; }
-	UCameraComponent* GetCamera() const  { return Camera; }
-
-	void HandleDeath();
 
 protected:
 	// Called when the game starts or when spawned
@@ -45,6 +35,19 @@ protected:
 	// Health component
 	UPROPERTY(EditAnywhere, Category = "Components")
 	UHealthComponent* Health;
+
+public:
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+	// Called to bind functionality to player input
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	// Handle character death
+	void HandleDeath();
+
+	// Getter methods
+	USpringArmComponent* GetSpringArm() const { return SpringArm; }
+	UCameraComponent* GetCamera() const { return Camera; }
 
 private:
 	// -----Functions and properties for player character controls-----

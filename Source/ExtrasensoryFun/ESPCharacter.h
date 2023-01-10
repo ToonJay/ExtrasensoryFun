@@ -6,7 +6,7 @@
 #include "BaseCharacter.h"
 #include "ESPCharacter.generated.h"
 
-// -----Telekinesis properties used for the telekinesis functions-----
+// Struct for telekinesis properties
 USTRUCT()
 struct FTelekinesis {
 
@@ -47,17 +47,21 @@ class EXTRASENSORYFUN_API AESPCharacter : public ABaseCharacter
 public:
 	// Default constructor
 	AESPCharacter();
-	// Called to bind functionality to player input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	
+public:
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+	// Called to bind functionality to player input
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	// Called when movement mode changes
+	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PrevCustomMode) override;
 
 private:
-	// -----Telekinesis properties and functions-----
+	// -----Telekinesis-----
 	UPROPERTY(EditAnywhere, Category = Config)
 	FTelekinesis TelekinesisConfig;
 	// Functions and property for grabbing
@@ -80,19 +84,22 @@ private:
 	int GetFarthestGrabbedObject() const;
 	void Throw();
 	
-	// -----Properties related to the physics handles used for the telekinesis functions-----
-	//Array of physics handle components that will be attached to the character.
-	//Need a physics handle for each object we want to grab and manipulate at the same time.
+	// -----Jumping-----
+	void Jumping();
+	int JumpCount = 0;
+	float JumpTimer = 0.f;
+	float JumpTime = 0.2f;
+
+	// -----Physics-----
 	UPROPERTY(EditAnywhere, Category = "Physics Handles")
 	TArray<class UPhysicsHandleComponent*> PhysicsHandles;
-	// Interpolation speed of every physics handle component
 	UPROPERTY(EditAnywhere, Category = "Physics Handles")
 	float InterpolationSpeed = 50.f;
-	// Relative position from the character for each object it's grabbing 
+	// Grabbed objects' relative positions from the character
 	UPROPERTY(VisibleAnywhere, Category = "Physics Handles")
 	TArray<FVector> PositionsFromChar;
 
-	// -----Properties and functions for telekinesis FX-----
+	// -----Telekinesis FX-----
 	// Particles for telekinesis casting effect
 	UPROPERTY(EditAnywhere, Category = "Telekinesis FX")
 	UParticleSystem* MuzzleCast;
@@ -103,4 +110,7 @@ private:
 	UMaterialInstance* TelekinesisDecalMaterial;
 	// Attaches a decal to an object being grabbed
 	void AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, int Index);
+
+	// -----Camera-----
+	void CenterCameraBehindCharacter();
 };

@@ -13,6 +13,7 @@
 #include "ShooterProjectile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "TimerManager.h"
 
 // Default constructor
 AESPCharacter::AESPCharacter() {
@@ -22,62 +23,6 @@ AESPCharacter::AESPCharacter() {
 	// Create physics handle components for the character according to ObjectGrabLimit and number them
 	for (int i = 0; i < TelekinesisConfig.ObjectGrabLimit; i++) {
 		CreateDefaultSubobject<UPhysicsHandleComponent>(FName("Physics Handle " + FString::FromInt(i + 1)));
-	}
-}
-
-// Called to bind functionality to player input
-void AESPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	// Telekinesis player input binds
-	PlayerInputComponent->BindAction(TEXT("Grab"), EInputEvent::IE_Pressed, this, &AESPCharacter::StartGrabbing);
-	PlayerInputComponent->BindAction(TEXT("Grab"), EInputEvent::IE_Released, this, &AESPCharacter::StopGrabbing);
-	PlayerInputComponent->BindAction(TEXT("Release"), EInputEvent::IE_Pressed, this, &AESPCharacter::Release);
-	PlayerInputComponent->BindAction(TEXT("Throw"), EInputEvent::IE_Pressed, this, &AESPCharacter::ThrowAim);
-	PlayerInputComponent->BindAction(TEXT("Throw"), EInputEvent::IE_Released, this, &AESPCharacter::Throw);
-}
-
-// Called every frame
-void AESPCharacter::Tick(float DeltaTime) {
-	Super::Tick(DeltaTime);
-	/**
-	* Set the location and rotation of each grabbed object.
-	* TargetLocation is always set to the relative position from the character assigned during grabbing.
-	* Use the camera viewpoint for the direction of TargetLocation.
-	* Rotation is set to the TargetRotation of the spring arm.
-	*/
-	for (int i = 0; i < PhysicsHandles.Num(); i++) {
-		if (UPrimitiveComponent* Component = PhysicsHandles[i]->GetGrabbedComponent()) {
-			float CapsuleHalfHeight = this->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-			FVector TargetLocation = GetActorLocation()
-				+ Camera->GetForwardVector() * (FMath::Clamp(PositionsFromChar[i].X, 100, PositionsFromChar[i].X))
-				+ Camera->GetRightVector() * PositionsFromChar[i].Y
-				+ Camera->GetUpVector() * 90.f;
-			PhysicsHandles[i]->SetTargetLocationAndRotation(TargetLocation, SpringArm->GetTargetRotation());
-		}
-	}
-
-	// Activate the emitter when grabbing at least 1 object, deactivate when not
-	if (CastEmitter) {
-		if (IsGrabbingObject()) {
-			if (!CastEmitter->IsActive()) {
-				CastEmitter->Activate();
-			}
-		} else {
-			CastEmitter->Deactivate();
-		}
-	} else {
-		UE_LOG(LogTemp, Error, TEXT("No particle effect on MuzzleCast!"));
-	}
-
-	// Keep grabbing as long as the "Grab" action input is pressed
-	if (IsGrabbing) {
-		Grab();
-	}
-
-	// Freeze character and set velocity to 0 while aiming
-	if (IsFrozen) {
-		SetActorLocation(FreezeLocation);
-		GetCharacterMovement()->Velocity = FVector(0.f);
 	}
 }
 
@@ -104,7 +49,83 @@ void AESPCharacter::BeginPlay() {
 		false,
 		EPSCPoolMethod::None,
 		false
-	); 
+	);
+}
+
+// Called every frame
+void AESPCharacter::Tick(float DeltaTime) {
+	Super::Tick(DeltaTime);
+	/**
+	* Set the location and rotation of each grabbed object.
+	* TargetLocation is always set to the relative position from the character assigned during grabbing.
+	* Use the camera viewpoint for the direction of TargetLocation.
+	* Rotation is set to the TargetRotation of the spring arm.
+	*/
+	for (int i = 0; i < PhysicsHandles.Num(); i++) {
+		if (UPrimitiveComponent* Component = PhysicsHandles[i]->GetGrabbedComponent()) {
+			float CapsuleHalfHeight = this->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+			FVector TargetLocation = GetActorLocation()
+				+ FVector(GetActorForwardVector().X, GetActorForwardVector().Y, Camera->GetForwardVector().Z) * (FMath::Clamp(PositionsFromChar[i].X, 100, PositionsFromChar[i].X))
+				+ GetActorRightVector() * PositionsFromChar[i].Y
+				+ GetActorUpVector() * 90.f;
+			PhysicsHandles[i]->SetTargetLocationAndRotation(TargetLocation, SpringArm->GetTargetRotation());
+		}
+	}
+
+	// Activate the emitter when grabbing at least 1 object, deactivate when not
+	if (CastEmitter) {
+		if (IsGrabbingObject()) {
+			if (!CastEmitter->IsActive()) {
+				CastEmitter->Activate();
+			}
+		} else {
+			CastEmitter->Deactivate();
+		}
+	} else {
+		UE_LOG(LogTemp, Error, TEXT("No particle effect on MuzzleCast!"));
+	}
+
+	// Keep grabbing as long as the "Grab" action input is pressed
+	if (IsGrabbing) {
+		Grab();
+	} 
+	// Freeze character and set velocity to 0 while aiming
+	if (IsFrozen) {
+		SetActorLocation(FreezeLocation);
+		GetCharacterMovement()->Velocity = FVector(0.f);
+	}
+
+	// Continuously substract from JumpTimer with delta seconds
+	// JumpTimer constantly gets set to JumpTime in OnMovementModeChanged()
+	if (JumpTimer > 0.f) {
+		JumpTimer -= GetWorld()->GetDeltaSeconds();
+	}
+	// Whenever JumpTimer runs out, set JumpCount to 0
+	if (!GetCharacterMovement()->IsFalling() && JumpTimer <= 0.f) {
+		JumpCount = 0;
+	}
+}
+
+// Called to bind functionality to player input
+void AESPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	// Telekinesis player input binds
+	PlayerInputComponent->BindAction(TEXT("Grab"), EInputEvent::IE_Pressed, this, &AESPCharacter::StartGrabbing);
+	PlayerInputComponent->BindAction(TEXT("Grab"), EInputEvent::IE_Released, this, &AESPCharacter::StopGrabbing);
+	PlayerInputComponent->BindAction(TEXT("Release"), EInputEvent::IE_Pressed, this, &AESPCharacter::Release);
+	PlayerInputComponent->BindAction(TEXT("Throw"), EInputEvent::IE_Pressed, this, &AESPCharacter::ThrowAim);
+	PlayerInputComponent->BindAction(TEXT("Throw"), EInputEvent::IE_Released, this, &AESPCharacter::Throw);
+	// Jumping and camera movement player input bind
+	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Pressed, this, &AESPCharacter::Jumping);
+	PlayerInputComponent->BindAction(TEXT("CenterCamera"), EInputEvent::IE_Pressed, this, &AESPCharacter::CenterCameraBehindCharacter);
+}
+
+// Reset JumpTimer every time the character lands, after it lands
+void AESPCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PrevCustomMode) {
+	Super::OnMovementModeChanged(PrevMovementMode, PrevCustomMode);
+	if (PrevMovementMode == EMovementMode::MOVE_Falling) {
+		JumpTimer = JumpTime;
+	}
 }
 
 /**
@@ -169,14 +190,26 @@ void AESPCharacter::SortHitResults(TArray<FHitResult>& OutHitResults) const {
 	}
 }
 
-// Set IsGrabbing to true
+/*
+* Set IsGrabbing to true.
+* Center camera behind player.
+* Use controller rotation yaw and don't orient rotation to movement.
+*/ 
 void AESPCharacter::StartGrabbing() {
 	IsGrabbing = true;
+	GetController()->SetControlRotation(FRotator(GetControlRotation().Pitch, GetActorRotation().Yaw, GetControlRotation().Roll));
+	bUseControllerRotationYaw = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 }
 
-// Set IsGrabbing to false
+/*
+* Set IsGrabbing to true.
+* Orient rotation to movement and don't use controller rotation yaw.
+*/
 void AESPCharacter::StopGrabbing() {
 	IsGrabbing = false;
+	bUseControllerRotationYaw = false;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
 }
 
 /**
@@ -262,12 +295,18 @@ void AESPCharacter::Release() {
 
 /*
 * Set IsFrozen to true and get the character's location.
-* This will be used to set the character in place while aiming to Throw.
+* Center camera behind the character.
+* Use controller rotation yaw and don't orient rotation to movement.
+* 
+* This will be used to set the character in place and rotate it with the camera when aiming to throw.
 */ 
 void AESPCharacter::ThrowAim() {
 	if (IsGrabbingObject()) {
 		IsFrozen = true;
 		FreezeLocation = GetActorLocation();
+		GetController()->SetControlRotation(FRotator(GetControlRotation().Pitch, GetActorRotation().Yaw, GetControlRotation().Roll));
+		bUseControllerRotationYaw = true;
+		GetCharacterMovement()->bOrientRotationToMovement = false;
 	}
 }
 
@@ -372,8 +411,10 @@ void AESPCharacter::Throw() {
 		} else {
 			Component->AddImpulse(Camera->GetForwardVector() * TelekinesisConfig.ThrowForce, NAME_None, true);
 		}
-		// Unfreeze character
+		// Unfreeze character, orient rotation to movement and don't use controller rotation yaw
 		IsFrozen = false;
+		bUseControllerRotationYaw = false;
+		GetCharacterMovement()->bOrientRotationToMovement = true;
 	}
 }
 
@@ -385,6 +426,41 @@ bool AESPCharacter::IsGrabbingObject() {
 		}
 	}
 	return false;
+}
+
+/**
+* Manage's character's jumping depending on JumpCount and JumpTimer.
+* This makes it so the Character's jumping is like the Triple Jump from Super Mario 64.
+*
+* This method works in tandum with Tick() and OnMovementModeChanged().
+* Thanks to OnMovementModeChanged(), each time the player lands, JumpTimer gets set to JumpTime.
+* In the Tick() function, JumpTimer gets substracted by delta seconds, and JumpCount gets set to 0
+* whenever JumpTimer reachers 0.
+*/
+void AESPCharacter::Jumping() {
+	if (!GetCharacterMovement()->IsFalling()) {
+		FVector RelativeVelocity = GetActorRotation().UnrotateVector(GetVelocity());
+		/**
+		* - After the first jump (JumpCount == 1), if the character jumps before JumpTimer reaches 0,
+		* perform the second jump, which allows a higher JumpMaxHoldTime.
+		* - After the second jump (JumpCount == 2), if the character jumps before JumpTimer reaches 0 AND
+		* if the character has enough velocity, perform the third jump. For the third jump, there's no control for the height,
+		* but it allows for a much higher jump.
+		* - Otherwise, perform the first jump.
+		*/
+		if (JumpCount == 1 && JumpTimer > 0.f) {
+			JumpMaxHoldTime = 0.41f;
+		} else if (JumpCount == 2 && JumpTimer > 0.f && FMath::Abs(RelativeVelocity.X) + FMath::Abs(RelativeVelocity.Y) >= 600.f) {
+			GetCharacterMovement()->JumpZVelocity = 4200.f;
+			JumpMaxHoldTime = 0.f;
+			JumpCount = -1;
+		} else {
+			GetCharacterMovement()->JumpZVelocity = 1260.f;
+			JumpMaxHoldTime = 0.3f;
+			JumpCount = 0;
+		}
+		JumpCount++;
+	}
 }
 
 /**
@@ -413,4 +489,9 @@ void AESPCharacter::AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, in
 	} else {
 		UE_LOG(LogTemp, Error, TEXT("No decal material set!"));
 	}
+}
+
+// Centers the camera behind the character
+void AESPCharacter::CenterCameraBehindCharacter() {
+	GetController()->SetControlRotation(FRotator(GetControlRotation().Pitch, GetActorRotation().Yaw, GetControlRotation().Roll));
 }
