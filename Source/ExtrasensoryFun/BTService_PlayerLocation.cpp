@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Pawn.h"
 
+// Default constructor
 UBTService_PlayerLocation::UBTService_PlayerLocation() {
 	NodeName = TEXT("Update Player Location");
 }

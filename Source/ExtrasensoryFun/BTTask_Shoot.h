@@ -13,8 +13,11 @@ UCLASS()
 class EXTRASENSORYFUN_API UBTTask_Shoot : public UBTTaskNode
 {
 	GENERATED_BODY()
+	
 public:
+	// Default constructor
 	UBTTask_Shoot();
+
 protected:
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 };

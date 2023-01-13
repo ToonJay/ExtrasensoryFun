@@ -13,8 +13,11 @@ UCLASS()
 class EXTRASENSORYFUN_API UBTService_PlayerLocation : public UBTService_BlackboardBase
 {
 	GENERATED_BODY()
+	
 public:
+	// Default constructor
 	UBTService_PlayerLocation();
+
 protected:
 	virtual void TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 };
