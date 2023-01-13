@@ -15,11 +15,13 @@ UCLASS()
 class EXTRASENSORYFUN_API AShooterAIController : public AAIController {
 	GENERATED_BODY()
 	
-public:
-	virtual void Tick(float DeltaSeconds) override;
-
 protected:
+	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+public:
+	// Called every frame
+	virtual void Tick(float DeltaSeconds) override;
 
 private:
 	UPROPERTY(EditAnywhere)

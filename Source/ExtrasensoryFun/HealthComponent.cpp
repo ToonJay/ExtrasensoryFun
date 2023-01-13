@@ -15,16 +15,8 @@ UHealthComponent::UHealthComponent()
 	// ...
 }
 
-// Called every frame
-void UHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
-}
-
 // Called when the game starts
-void UHealthComponent::BeginPlay()
-{
+void UHealthComponent::BeginPlay() {
 	Super::BeginPlay();
 	// Set health to max health
 	Health = MaxHealth;
@@ -32,7 +24,14 @@ void UHealthComponent::BeginPlay()
 	GetOwner()->OnTakeAnyDamage.AddDynamic(this, &UHealthComponent::DamageTaken);
 	// Get game mode
 	ExtrasensoryFunGameMode = Cast<AExtrasensoryFunGameMode>(UGameplayStatics::GetGameMode(this));
-	
+
+}
+
+// Called every frame
+void UHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) {
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	// ...
 }
 
 // Take damage

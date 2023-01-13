@@ -7,6 +7,7 @@
 #include "GameFramework/Pawn.h"
 #include "AIController.h"
 
+// Default constructor
 UBTService_PlayerLocationIfFound::UBTService_PlayerLocationIfFound() {
 	NodeName = TEXT("Update Player Location If Found");
 }

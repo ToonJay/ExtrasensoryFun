@@ -15,6 +15,12 @@ class EXTRASENSORYFUN_API AShooterProjectile : public AActor {
 public:	
 	// Default constructor
 	AShooterProjectile();
+
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -23,10 +29,6 @@ public:
 	UProjectileMovementComponent* GetMovementComp() { return MovementComp; }
 	UParticleSystemComponent* GetTrailFX() { return TrailFX; }
 	float GetDamage() const { return Damage; }
-
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
 	
 private:
 	//-----Projectile properties and components-----

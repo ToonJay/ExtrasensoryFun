@@ -8,9 +8,8 @@
 #include "Particles/ParticleSystemComponent.h"
 
 // Default constructor
-AShooterProjectile::AShooterProjectile()
-{
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+AShooterProjectile::AShooterProjectile() {
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	//Create projectile mesh, make it the root, and set it collision settings
@@ -39,19 +38,18 @@ AShooterProjectile::AShooterProjectile()
 }
 
 // Called when the game starts or when spawned
-void AShooterProjectile::BeginPlay()
-{
+void AShooterProjectile::BeginPlay() {
 	Super::BeginPlay();
+
 	// Add function to delegate
 	ProjectileMesh->OnComponentHit.AddDynamic(this, &AShooterProjectile::OnHit);
 
 }
 
 // Called every frame
-void AShooterProjectile::Tick(float DeltaTime)
-{
+void AShooterProjectile::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
-	
+
 }
 
 // On hit, apply damage event and destroy the projectile

@@ -17,16 +17,16 @@ class EXTRASENSORYFUN_API AShooterCharacter : public ABaseCharacter
 {
 	GENERATED_BODY()
 	
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
 public:
 	// Called to bind functionality to player input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	// Fire weapon
 	void Shoot();
-
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
 
 private:
 	// Weapon class
