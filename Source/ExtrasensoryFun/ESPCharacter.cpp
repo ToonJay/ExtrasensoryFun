@@ -13,7 +13,6 @@
 #include "ShooterProjectile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "TimerManager.h"
 
 // Default constructor
 AESPCharacter::AESPCharacter() {
@@ -29,6 +28,7 @@ AESPCharacter::AESPCharacter() {
 // Called when the game starts or when spawned
 void AESPCharacter::BeginPlay() {
 	Super::BeginPlay();
+
 	// Assign all physics handle components to the PhysicsHandles TArray
 	GetComponents(PhysicsHandles);
 	// For each physics handle, set its interpolation speed and add an element to the PositionsFromCharacter and TelekinesisDecals TArrays
@@ -55,6 +55,7 @@ void AESPCharacter::BeginPlay() {
 // Called every frame
 void AESPCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
+
 	/**
 	* Set the location and rotation of each grabbed object.
 	* TargetLocation is always set to the relative position from the character assigned during grabbing.
@@ -63,11 +64,17 @@ void AESPCharacter::Tick(float DeltaTime) {
 	*/
 	for (int i = 0; i < PhysicsHandles.Num(); i++) {
 		if (UPrimitiveComponent* Component = PhysicsHandles[i]->GetGrabbedComponent()) {
+			// If, while grabbing the component, it gets destroyed by an incoming projectile, release the component.
+			if (Component->IsPendingKill()) {
+				PhysicsHandles[i]->ReleaseComponent();
+			} 
 			float CapsuleHalfHeight = this->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+			// Get target location
 			FVector TargetLocation = GetActorLocation()
 				+ FVector(GetActorForwardVector().X, GetActorForwardVector().Y, Camera->GetForwardVector().Z) * (FMath::Clamp(PositionsFromChar[i].X, 100, PositionsFromChar[i].X))
 				+ GetActorRightVector() * PositionsFromChar[i].Y
 				+ GetActorUpVector() * 90.f;
+			// Set target location and rotation for the grabbed component
 			PhysicsHandles[i]->SetTargetLocationAndRotation(TargetLocation, SpringArm->GetTargetRotation());
 		}
 	}
@@ -109,6 +116,7 @@ void AESPCharacter::Tick(float DeltaTime) {
 // Called to bind functionality to player input
 void AESPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
 	// Telekinesis player input binds
 	PlayerInputComponent->BindAction(TEXT("Grab"), EInputEvent::IE_Pressed, this, &AESPCharacter::StartGrabbing);
 	PlayerInputComponent->BindAction(TEXT("Grab"), EInputEvent::IE_Released, this, &AESPCharacter::StopGrabbing);
@@ -123,6 +131,7 @@ void AESPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 // Reset JumpTimer every time the character lands, after it lands
 void AESPCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PrevCustomMode) {
 	Super::OnMovementModeChanged(PrevMovementMode, PrevCustomMode);
+
 	if (PrevMovementMode == EMovementMode::MOVE_Falling) {
 		JumpTimer = JumpTime;
 	}
@@ -197,7 +206,7 @@ void AESPCharacter::SortHitResults(TArray<FHitResult>& OutHitResults) const {
 */ 
 void AESPCharacter::StartGrabbing() {
 	IsGrabbing = true;
-	GetController()->SetControlRotation(FRotator(GetControlRotation().Pitch, GetActorRotation().Yaw, GetControlRotation().Roll));
+	GetController()->SetControlRotation(GetActorRotation());
 	bUseControllerRotationYaw = true;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 }
@@ -281,14 +290,16 @@ void AESPCharacter::Grab() {
 * Checks all physics handle components for grabbed objects and releases them.
 */
 void AESPCharacter::Release() {
-	for (int i = 0; i < PhysicsHandles.Num(); i++) {
-		if (UPrimitiveComponent* GrabbedComponent = PhysicsHandles[i]->GetGrabbedComponent()) {
-			GrabbedComponent->WakeAllRigidBodies(); // In case the object is sleeping
-			GrabbedComponent->GetOwner()->Tags.Remove("Grabbed");
-			// Re-enable gravity
-			GrabbedComponent->SetEnableGravity(true);
-			PhysicsHandles[i]->ReleaseComponent();
-			TelekinesisDecals[i]->DestroyComponent();
+	if (!IsFrozen) {
+		for (int i = 0; i < PhysicsHandles.Num(); i++) {
+			if (UPrimitiveComponent* GrabbedComponent = PhysicsHandles[i]->GetGrabbedComponent()) {
+				GrabbedComponent->WakeAllRigidBodies(); // In case the object is sleeping
+				GrabbedComponent->GetOwner()->Tags.Remove("Grabbed");
+				// Re-enable gravity
+				GrabbedComponent->SetEnableGravity(true);
+				PhysicsHandles[i]->ReleaseComponent();
+				TelekinesisDecals[i]->DestroyComponent();
+			}
 		}
 	}
 }
@@ -304,7 +315,7 @@ void AESPCharacter::ThrowAim() {
 	if (IsGrabbingObject()) {
 		IsFrozen = true;
 		FreezeLocation = GetActorLocation();
-		GetController()->SetControlRotation(FRotator(GetControlRotation().Pitch, GetActorRotation().Yaw, GetControlRotation().Roll));
+		GetController()->SetControlRotation(GetActorRotation());
 		bUseControllerRotationYaw = true;
 		GetCharacterMovement()->bOrientRotationToMovement = false;
 	}
@@ -493,5 +504,5 @@ void AESPCharacter::AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, in
 
 // Centers the camera behind the character
 void AESPCharacter::CenterCameraBehindCharacter() {
-	GetController()->SetControlRotation(FRotator(GetControlRotation().Pitch, GetActorRotation().Yaw, GetControlRotation().Roll));
+	GetController()->SetControlRotation(GetActorRotation());
 }

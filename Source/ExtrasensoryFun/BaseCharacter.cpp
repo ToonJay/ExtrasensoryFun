@@ -7,6 +7,7 @@
 #include "HealthComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include <Kismet/KismetMathLibrary.h>
 
 // Default constructor
 ABaseCharacter::ABaseCharacter() {
@@ -79,22 +80,22 @@ void ABaseCharacter::HandleDeath() {
 * @param AxisValue, Movement input to apply
 */
 void ABaseCharacter::MoveForward(float AxisValue) {
-	FRotator const ControlSpaceRot = Controller->GetControlRotation();
-
-	// transform to world space and add it
-	AddMovementInput(FRotationMatrix(ControlSpaceRot).GetScaledAxis(EAxis::X), AxisValue);
+	// Get the control rotation's yaw and zero-out the pitch and roll
+	FRotator const ControlYawRotation = FRotator(0.f, Controller->GetControlRotation().Yaw, 0.f);
+	// Use forward vector of ControlYawRotation and axis value to move character forwards or backwards
+	AddMovementInput(UKismetMathLibrary::GetForwardVector(ControlYawRotation), AxisValue);
 }
 
 /**
-* Strafe character left/right
+* Move character left or right based on AxisValue from player input
 * 
 * @param AxisValue, Movement input to apply
 */
 void ABaseCharacter::MoveRight(float AxisValue) {
-	FRotator const ControlSpaceRot = Controller->GetControlRotation();
-
-	// transform to world space and add it
-	AddMovementInput(FRotationMatrix(ControlSpaceRot).GetScaledAxis(EAxis::Y), AxisValue);
+	// Get the control rotation's yaw and zero-out the pitch and roll
+	FRotator const ControlYawRotation = FRotator(0.f, Controller->GetControlRotation().Yaw, 0.f);
+	// Use right vector of ControlYawRotation and axis value to move character left or right
+	AddMovementInput(UKismetMathLibrary::GetRightVector(ControlYawRotation), AxisValue);
 }
 
 /**
