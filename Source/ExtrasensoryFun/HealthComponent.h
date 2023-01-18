@@ -23,20 +23,22 @@ protected:
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	
+	// Getter methods
+	UFUNCTION(BlueprintPure)
+	float GetHealthPercent() const { return Health / MaxHealth; }
+	UFUNCTION(BlueprintPure)
+	bool IsDead() const { return Health <= 0.f; }
 
 private:
-	// -----Health and death properties and functions-----
+	// -----Health and death properties-----
 	// Health
 	UPROPERTY(EditAnywhere)
 	float MaxHealth = 100.f;
 	float Health = 0.f;
-	UFUNCTION(BlueprintPure)
-	float GetHealthPercent() const { return Health / MaxHealth; }
 	// Death
 	UPROPERTY(EditAnywhere)
 	bool CanDie = true;
-	UFUNCTION(BlueprintPure)
-	bool IsDead() const { return Health <= 0.f; }
 	
 	// Process damage taken
 	UFUNCTION()

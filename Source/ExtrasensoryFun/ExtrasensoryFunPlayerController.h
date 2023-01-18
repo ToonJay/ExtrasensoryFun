@@ -15,8 +15,14 @@ UCLASS()
 class EXTRASENSORYFUN_API AExtrasensoryFunPlayerController : public APlayerController
 {
 	GENERATED_BODY()
-	
-	protected:
+public:
+	// Game over method
+	void GameOver();
+
+	// Getter method
+	UFUNCTION(BlueprintCallable)
+	float GetRestartDelay() { return RestartDelay; }
+protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -26,4 +32,11 @@ private:
 	TSubclassOf<UUserWidget> HUDClass;
 	UPROPERTY()
 	UUserWidget* HUD;
+
+	// Game over class
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class UUserWidget> GameOverScreenClass;
+	UPROPERTY(EditAnywhere)
+	float RestartDelay = 5;
+	FTimerHandle RestartTimer;
 };
