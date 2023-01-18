@@ -33,7 +33,14 @@ void AShooterWeapon::FireWeapon() {
 		// Spawn projectile and set properties
 		AShooterProjectile* Projectile = GetWorld()->SpawnActor<AShooterProjectile>(ShooterProjectileClass, ProjectileSpawnPoint, ShotDirection);
 		Projectile->SetOwner(this);
-		Projectile->SetActorRelativeRotation(ShotDirection + FRotator(-90.f, 0.f, -90.f)); // We add that FRotator because of the character's and weapon's rotation
+		if (Projectile->GetMesh()->GetStaticMesh()->GetName() == "ammo_rocket") {
+			Projectile->SetActorRelativeRotation(ShotDirection + FRotator(-90.f, 0.f, -90.f)); // Add FRotator because of the character's, weapon's and projectile's rotations 
+		} else {
+			Projectile->SetActorRelativeRotation(ShotDirection + FRotator(-90.f, 0.f, 0.f)); // Add that FRotator because of the character's, weapon's and projectile's rotations 
+		}
+		
+
+		
 
 		// Play FX
 		if (MuzzleFlash) {
