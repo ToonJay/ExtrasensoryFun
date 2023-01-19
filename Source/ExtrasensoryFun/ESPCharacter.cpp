@@ -50,6 +50,54 @@ void AESPCharacter::BeginPlay() {
 		EPSCPoolMethod::None,
 		false
 	);
+	JumpEmitterLeft1 = UGameplayStatics::SpawnEmitterAttached(
+		SecondJumpFX,
+		GetMesh(),
+		TEXT("Foot_L"),
+		FVector(ForceInit),
+		FRotator::ZeroRotator,
+		FVector(1.f),
+		EAttachLocation::KeepRelativeOffset,
+		false,
+		EPSCPoolMethod::None,
+		false
+	);
+	JumpEmitterRight1 = UGameplayStatics::SpawnEmitterAttached(
+		SecondJumpFX,
+		GetMesh(),
+		TEXT("Foot_R"),
+		FVector(ForceInit),
+		FRotator::ZeroRotator,
+		FVector(1.f),
+		EAttachLocation::KeepRelativeOffset,
+		false,
+		EPSCPoolMethod::None,
+		false
+	);
+	JumpEmitterLeft2 = UGameplayStatics::SpawnEmitterAttached(
+		ThirdJumpFX,
+		GetMesh(),
+		TEXT("Foot_L"),
+		FVector(ForceInit),
+		FRotator::ZeroRotator,
+		FVector(1.f),
+		EAttachLocation::KeepRelativeOffset,
+		false,
+		EPSCPoolMethod::None,
+		false
+	);
+	JumpEmitterRight2 = UGameplayStatics::SpawnEmitterAttached(
+		ThirdJumpFX,
+		GetMesh(),
+		TEXT("Foot_R"),
+		FVector(ForceInit),
+		FRotator::ZeroRotator,
+		FVector(1.f),
+		EAttachLocation::KeepRelativeOffset,
+		false,
+		EPSCPoolMethod::None,
+		false
+	);
 }
 
 // Called every frame
@@ -128,12 +176,22 @@ void AESPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction(TEXT("CenterCamera"), EInputEvent::IE_Pressed, this, &AESPCharacter::CenterCameraBehindCharacter);
 }
 
-// Reset JumpTimer every time the character lands, after it lands
 void AESPCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PrevCustomMode) {
 	Super::OnMovementModeChanged(PrevMovementMode, PrevCustomMode);
 
+	// If previous movement was falling, as such returns true when landing
 	if (PrevMovementMode == EMovementMode::MOVE_Falling) {
+		// Reset jumptimer
 		JumpTimer = JumpTime;
+		// Deactivate jump fx
+		if (SecondJumpFX) {
+			JumpEmitterLeft1->Deactivate();
+			JumpEmitterRight1->Deactivate();
+		}
+		if (ThirdJumpFX) {
+			JumpEmitterLeft2->Deactivate();
+			JumpEmitterRight2->Deactivate();
+		}
 	}
 }
 
@@ -457,11 +515,20 @@ void AESPCharacter::Jumping() {
 		* - After the second jump (JumpCount == 2), if the character jumps before JumpTimer reaches 0 AND
 		* if the character has enough velocity, perform the third jump. For the third jump, there's no control for the height,
 		* but it allows for a much higher jump.
+		* - Second and third jumps activate their respective Jump FX
 		* - Otherwise, perform the first jump.
 		*/
 		if (JumpCount == 1 && JumpTimer > 0.f) {
+			if (SecondJumpFX) {
+				JumpEmitterLeft1->Activate();
+				JumpEmitterRight1->Activate();
+			}
 			JumpMaxHoldTime = 0.41f;
 		} else if (JumpCount == 2 && JumpTimer > 0.f && FMath::Abs(RelativeVelocity.X) + FMath::Abs(RelativeVelocity.Y) >= 600.f) {
+			if (ThirdJumpFX) {
+				JumpEmitterLeft2->Activate();
+				JumpEmitterRight2->Activate();
+			}
 			GetCharacterMovement()->JumpZVelocity = 4200.f;
 			JumpMaxHoldTime = 0.f;
 			JumpCount = -1;

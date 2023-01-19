@@ -12,6 +12,7 @@ struct FTelekinesis {
 
 	GENERATED_USTRUCT_BODY()
 
+	// Necessary properties for grabbing and throwing
 	UPROPERTY(EditAnywhere, Category = "Telekinesis")
 	int ObjectGrabLimit;
 	UPROPERTY(EditAnywhere, Category = "Telekinesis")
@@ -25,6 +26,7 @@ struct FTelekinesis {
 	UPROPERTY(EditAnywhere, Category = "Telekinesis")
 	float ThrowForce;
 
+	// Default values
 	FTelekinesis() {
 		ObjectGrabLimit = 10;
 		GrabRange = 401.f;
@@ -85,10 +87,20 @@ private:
 	void Throw();
 	
 	// -----Jumping-----
+	// Jump Properties
 	void Jumping();
 	int JumpCount = 0;
 	float JumpTimer = 0.f;
 	float JumpTime = 0.2f;
+	// Jump FX
+	UPROPERTY(EditAnywhere)
+	UParticleSystem* SecondJumpFX;
+	UPROPERTY(EditAnywhere)
+	UParticleSystem* ThirdJumpFX;
+	UParticleSystemComponent* JumpEmitterLeft1;
+	UParticleSystemComponent* JumpEmitterRight1;
+	UParticleSystemComponent* JumpEmitterLeft2;
+	UParticleSystemComponent* JumpEmitterRight2;
 
 	// -----Physics-----
 	UPROPERTY(EditAnywhere, Category = "Physics Handles")
