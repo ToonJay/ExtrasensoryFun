@@ -92,7 +92,7 @@ private:
 	int JumpCount = 0;
 	float JumpTimer = 0.f;
 	float JumpTime = 0.2f;
-	// Jump FX
+	// Jump VFX
 	UPROPERTY(EditAnywhere)
 	UParticleSystem* SecondJumpFX;
 	UPROPERTY(EditAnywhere)
@@ -121,8 +121,5 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Telekinesis FX")
 	UMaterialInstance* TelekinesisDecalMaterial;
 	// Attaches a decal to an object being grabbed
-	void AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, int Index);
-
-	// -----Camera-----
-	void CenterCameraBehindCharacter();
+	void AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, int Index); 
 };

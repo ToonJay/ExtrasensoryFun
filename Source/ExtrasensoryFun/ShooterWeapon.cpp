@@ -39,9 +39,6 @@ void AShooterWeapon::FireWeapon() {
 			Projectile->SetActorRelativeRotation(ShotDirection + FRotator(-90.f, 0.f, 0.f)); // Add that FRotator because of the character's, weapon's and projectile's rotations 
 		}
 		
-
-		
-
 		// Play FX
 		if (MuzzleFlash) {
 			UGameplayStatics::SpawnEmitterAttached(MuzzleFlash, WeaponMesh, TEXT("MuzzleFlashSocket"));

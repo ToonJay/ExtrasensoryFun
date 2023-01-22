@@ -173,7 +173,7 @@ void AESPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction(TEXT("Throw"), EInputEvent::IE_Released, this, &AESPCharacter::Throw);
 	// Jumping and camera movement player input bind
 	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Pressed, this, &AESPCharacter::Jumping);
-	PlayerInputComponent->BindAction(TEXT("CenterCamera"), EInputEvent::IE_Pressed, this, &AESPCharacter::CenterCameraBehindCharacter);
+	
 }
 
 void AESPCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PrevCustomMode) {
@@ -264,9 +264,11 @@ void AESPCharacter::SortHitResults(TArray<FHitResult>& OutHitResults) const {
 */ 
 void AESPCharacter::StartGrabbing() {
 	IsGrabbing = true;
-	GetController()->SetControlRotation(GetActorRotation());
-	bUseControllerRotationYaw = true;
-	GetCharacterMovement()->bOrientRotationToMovement = false;
+	if (!Target.GetActor()) {
+		GetController()->SetControlRotation(GetActorRotation());
+		bUseControllerRotationYaw = true;
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+	}
 }
 
 /*
@@ -275,8 +277,10 @@ void AESPCharacter::StartGrabbing() {
 */
 void AESPCharacter::StopGrabbing() {
 	IsGrabbing = false;
-	bUseControllerRotationYaw = false;
-	GetCharacterMovement()->bOrientRotationToMovement = true;
+	if (!Target.GetActor()) {
+		bUseControllerRotationYaw = false;
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+	}
 }
 
 /**
@@ -373,9 +377,11 @@ void AESPCharacter::ThrowAim() {
 	if (IsGrabbingObject()) {
 		IsFrozen = true;
 		FreezeLocation = GetActorLocation();
-		GetController()->SetControlRotation(GetActorRotation());
-		bUseControllerRotationYaw = true;
-		GetCharacterMovement()->bOrientRotationToMovement = false;
+		if (!Target.GetActor()) {
+			GetController()->SetControlRotation(GetActorRotation());
+			bUseControllerRotationYaw = true;
+			GetCharacterMovement()->bOrientRotationToMovement = false;
+		}
 	}
 }
 
@@ -450,11 +456,13 @@ void AESPCharacter::Throw() {
 	// Check if there's currently at least one object being grabbed
 	if (IsGrabbingObject()) {
 		int ThrowIndex;
-
 		FHitResult HitResult;
-		// If there's a target, get object closest to the target
-		// Otherwise, get the object farthest forwards from the character
-		if (ThrowAimTrace(HitResult)) {
+		// If there's a Target, get object closest to the target.
+		// If no Target, throw aim trace and get object closest to the HitResult.
+		// If no HitResult, throw object farthest from character.
+		if (Target.GetActor()) {
+			ThrowIndex = GetClosestGrabbedObject(&Target);
+		} else if (ThrowAimTrace(HitResult)) {
 			ThrowIndex = GetClosestGrabbedObject(&HitResult);
 		} else {
 			ThrowIndex = GetFarthestGrabbedObject();	
@@ -472,18 +480,25 @@ void AESPCharacter::Throw() {
 		// remove telekinesis decal
 		TelekinesisDecals[ThrowIndex]->DestroyComponent();
 
-		// If there was a blocking hit from the trace, throw at target
-		// Otherwise, throw in the forward direction of the camera
-		if (HitResult.bBlockingHit) {
+		// If there's a Target, throw at Target.
+		// If no target and there' was's a blocking hit from ThrowAimTrace, throw at HitResult.
+		// Otherwise, throw in the forward direction of the camera.
+		if (Target.GetActor()) {
+			FVector TargetDirection = Target.GetActor()->GetTargetLocation() - Component->GetComponentLocation();
+			Component->AddImpulse(TargetDirection.Rotation().Vector() * TelekinesisConfig.ThrowForce, NAME_None, true);
+		} else if (HitResult.bBlockingHit) {
 			FVector TargetDirection = HitResult.GetActor()->GetTargetLocation() - Component->GetComponentLocation();
 			Component->AddImpulse(TargetDirection.Rotation().Vector() * TelekinesisConfig.ThrowForce, NAME_None, true);
 		} else {
 			Component->AddImpulse(Camera->GetForwardVector() * TelekinesisConfig.ThrowForce, NAME_None, true);
 		}
-		// Unfreeze character, orient rotation to movement and don't use controller rotation yaw
+		// Unfreeze character
 		IsFrozen = false;
-		bUseControllerRotationYaw = false;
-		GetCharacterMovement()->bOrientRotationToMovement = true;
+		// If no Target, orient rotation to movement and don't use controller rotation yaw
+		if (!Target.GetActor()) {
+			bUseControllerRotationYaw = false;
+			GetCharacterMovement()->bOrientRotationToMovement = true;
+		}
 	}
 }
 
@@ -567,9 +582,4 @@ void AESPCharacter::AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, in
 	} else {
 		UE_LOG(LogTemp, Error, TEXT("No decal material set!"));
 	}
-}
-
-// Centers the camera behind the character
-void AESPCharacter::CenterCameraBehindCharacter() {
-	GetController()->SetControlRotation(GetActorRotation());
 }

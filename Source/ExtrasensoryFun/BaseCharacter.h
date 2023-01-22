@@ -10,10 +10,10 @@ class USpringArmComponent;
 class UCameraComponent;
 class UHealthComponent;
 /**
- * This class is for the basic functionality for any character.
- * Responsible for player inputs as well as basic data that can be useful for
- * any type of character, whether it's a player, enemy or npc.
- */
+* This class is for the basic functionality for any character.
+* Responsible for player inputs as well as basic data that can be useful for any type of character,
+* whether it's a player, enemy or npc.
+*/
 UCLASS()
 class EXTRASENSORYFUN_API ABaseCharacter : public ACharacter {
 	GENERATED_BODY()
@@ -35,6 +35,8 @@ protected:
 	// Health component
 	UPROPERTY(EditAnywhere, Category = "Components")
 	UHealthComponent* Health;
+
+	FHitResult Target;
 
 public:
 	// Called every frame
@@ -59,4 +61,9 @@ private:
 	void LookRightRate(float AxisValue);
 	UPROPERTY(EditAnywhere, Category = "Components")
 	float RotationRate = 70.f;
+
+	// -----Camera-----
+	void CenterCameraBehindCharacter();
+	void TargetLockOn();
+	
 };

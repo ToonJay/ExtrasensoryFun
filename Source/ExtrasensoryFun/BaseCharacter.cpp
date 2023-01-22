@@ -31,7 +31,11 @@ ABaseCharacter::ABaseCharacter() {
 	GetMesh()->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECR_Block);
 
 	// Orient rotation to movement and set Yaw Rotation Rate
-	GetCharacterMovement()->bOrientRotationToMovement = true;
+	if (Cast<APlayerController>(GetController())) {
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+	} else {
+		bUseControllerRotationYaw = false;
+	}
 	GetCharacterMovement()->RotationRate.Yaw = 540.f;
 }
 
@@ -45,6 +49,12 @@ void ABaseCharacter::BeginPlay() {
 void ABaseCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 
+	if (Target.GetActor() && Cast<ABaseCharacter>(Target.GetActor())->GetController()) {
+		FVector TargetDirection = Target.GetActor()->GetActorLocation() - GetActorLocation();
+		SetActorRotation(TargetDirection.Rotation());
+	} else {
+		Target.Init();
+	}
 }
 
 // Called to bind functionality to player input
@@ -62,6 +72,9 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	// Camera rotation player input binds for gamepad
 	PlayerInputComponent->BindAxis(TEXT("LookUpRate"), this, &ABaseCharacter::LookUpRate);
 	PlayerInputComponent->BindAxis(TEXT("LookRightRate"), this, &ABaseCharacter::LookRightRate);
+	// Camera input binds
+	PlayerInputComponent->BindAction(TEXT("CenterCamera"), EInputEvent::IE_Pressed, this, &ABaseCharacter::CenterCameraBehindCharacter);
+	PlayerInputComponent->BindAction(TEXT("TargetLock-on"), EInputEvent::IE_Pressed, this, &ABaseCharacter::TargetLockOn);
 }
 
 // Handle character death
@@ -118,4 +131,38 @@ void ABaseCharacter::LookUpRate(float AxisValue) {
 void ABaseCharacter::LookRightRate(float AxisValue) {
 	// calculate delta for this frame from the rate information
 	AddControllerYawInput(AxisValue * RotationRate * GetWorld()->GetDeltaSeconds());
+}
+
+// Centers the camera behind the character
+void ABaseCharacter::CenterCameraBehindCharacter() {
+	GetController()->SetControlRotation(GetActorRotation());
+}
+
+void ABaseCharacter::TargetLockOn() {
+	GetController()->SetControlRotation(GetActorRotation());
+	if (!Target.GetActor()) {
+		float CapsuleHalfHeight = this->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		FVector Start = GetActorLocation() + GetActorForwardVector() * (800.f + CapsuleHalfHeight);
+		// + the CapsuleHalfHeight in proportion to how far we aim the camera up or down.
+		FVector End = GetActorLocation() + GetActorForwardVector() * (10000.f + CapsuleHalfHeight);
+		FCollisionShape Sphere = FCollisionShape::MakeSphere(800.f);
+		GetWorld()->SweepSingleByChannel(
+			Target,
+			Start, End,
+			FQuat::Identity,
+			ECC_GameTraceChannel2,
+			Sphere
+		);
+		if (Target.GetActor()) {
+			bUseControllerRotationYaw = true;
+			GetCharacterMovement()->bOrientRotationToMovement = false;
+		} else {
+			bUseControllerRotationYaw = false;
+			GetCharacterMovement()->bOrientRotationToMovement = true;
+		}
+	} else {
+		Target.Init();
+		bUseControllerRotationYaw = false;
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+	}
 }
