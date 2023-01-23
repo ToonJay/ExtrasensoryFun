@@ -36,7 +36,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Components")
 	UHealthComponent* Health;
 
+	// ----Camera-----
 	FHitResult Target;
+	FVector PositionFromChar(UPrimitiveComponent* Component) const;
 
 public:
 	// Called every frame
@@ -50,20 +52,19 @@ public:
 	// Getter methods
 	USpringArmComponent* GetSpringArm() const { return SpringArm; }
 	UCameraComponent* GetCamera() const { return Camera; }
+	
 
 private:
-	// -----Functions and properties for player character controls-----
-	// Character movement
+	// -----Character movement-----
 	void MoveForward(float AxisValue);
 	void MoveRight(float AxisValue);
-	// Camera rotation for gamepads only
-	void LookUpRate(float AxisValue);
+
+	// -----Camera-----
 	void LookRightRate(float AxisValue);
 	UPROPERTY(EditAnywhere, Category = "Components")
 	float RotationRate = 70.f;
-
-	// -----Camera-----
+	void ZoomCamera(float AxisValue);
+	void ZoomCameraRate(float AxisValue);
 	void CenterCameraBehindCharacter();
 	void TargetLockOn();
-	
 };

@@ -45,15 +45,26 @@ void ABaseCharacter::BeginPlay() {
 
 }
 
+FVector ABaseCharacter::PositionFromChar(UPrimitiveComponent* Component) const {
+	return Component->GetComponentTransform().GetRelativeTransform(GetActorTransform()).GetLocation();
+}
+
 // Called every frame
 void ABaseCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 
 	if (Target.GetActor() && Cast<ABaseCharacter>(Target.GetActor())->GetController()) {
 		FVector TargetDirection = Target.GetActor()->GetActorLocation() - GetActorLocation();
-		SetActorRotation(TargetDirection.Rotation());
+		SetActorRotation(FRotator(GetActorRotation().Pitch, TargetDirection.Rotation().Yaw, GetActorRotation().Roll));
+		SpringArm->SetRelativeLocation(PositionFromChar(Target.GetComponent()) / 2 + FVector(0.f,0.f,90.f));
 	} else {
 		Target.Init();
+		SpringArm->SetRelativeLocation(FVector(0.f, 0.f, 90.f));
+	}
+	
+	if (Cast<APlayerController>(GetController())) {
+		UE_LOG(LogTemp, Warning, TEXT("%f"), GetController()->GetControlRotation().Vector().Z);
+		UE_LOG(LogTemp, Warning, TEXT("%f"), SpringArm->TargetArmLength);
 	}
 }
 
@@ -67,14 +78,14 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAxis(TEXT("MoveForward"), this, &ABaseCharacter::MoveForward);
 	PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &ABaseCharacter::MoveRight);
 	// Camera rotation player input binds for mouse
-	PlayerInputComponent->BindAxis(TEXT("LookUp"), this, &APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis(TEXT("LookRight"), this, &APawn::AddControllerYawInput);
 	// Camera rotation player input binds for gamepad
-	PlayerInputComponent->BindAxis(TEXT("LookUpRate"), this, &ABaseCharacter::LookUpRate);
 	PlayerInputComponent->BindAxis(TEXT("LookRightRate"), this, &ABaseCharacter::LookRightRate);
 	// Camera input binds
 	PlayerInputComponent->BindAction(TEXT("CenterCamera"), EInputEvent::IE_Pressed, this, &ABaseCharacter::CenterCameraBehindCharacter);
 	PlayerInputComponent->BindAction(TEXT("TargetLock-on"), EInputEvent::IE_Pressed, this, &ABaseCharacter::TargetLockOn);
+	PlayerInputComponent->BindAxis(TEXT("ZoomCamera"), this, &ABaseCharacter::ZoomCamera);
+	PlayerInputComponent->BindAxis(TEXT("ZoomCameraRate"), this, &ABaseCharacter::ZoomCameraRate);
 }
 
 // Handle character death
@@ -112,17 +123,6 @@ void ABaseCharacter::MoveRight(float AxisValue) {
 }
 
 /**
-* Rotate camera up/down at RotationRate per second.
-* For gamepads only.
-* 
-* @param AxisValue, Rotation input to apply
-*/
-void ABaseCharacter::LookUpRate(float AxisValue) {
-	// calculate delta for this frame from the rate information
-	AddControllerPitchInput(AxisValue * RotationRate * GetWorld()->GetDeltaSeconds());
-}
-
-/**
 * Rotate camera left/right at RotationRate per second.
 * For gamepads only.
 * 
@@ -131,6 +131,34 @@ void ABaseCharacter::LookUpRate(float AxisValue) {
 void ABaseCharacter::LookRightRate(float AxisValue) {
 	// calculate delta for this frame from the rate information
 	AddControllerYawInput(AxisValue * RotationRate * GetWorld()->GetDeltaSeconds());
+}
+
+void ABaseCharacter::ZoomCamera(float AxisValue) {
+	FRotator ControllerRotation = GetController()->GetControlRotation();
+	if ((AxisValue > 0 && ControllerRotation.Vector().Z > -0.6f) || (AxisValue < 0 && ControllerRotation.Vector().Z < 0.6f)) {
+		AddControllerPitchInput(AxisValue);
+	}
+	FVector ControllerVector = ControllerRotation.Vector();
+	if (GetController()->GetControlRotation().Vector().Z < -0.6f) {
+		GetController()->SetControlRotation(FRotator(FVector(ControllerVector.X, ControllerVector.Y, -0.6f).Rotation().Pitch, ControllerRotation.Yaw, ControllerRotation.Roll));
+	} else if (GetController()->GetControlRotation().Vector().Z > 0.6f) {
+		GetController()->SetControlRotation(FRotator(FVector(ControllerVector.X, ControllerVector.Y, 0.6f).Rotation().Pitch, ControllerRotation.Yaw, ControllerRotation.Roll));
+	}
+	SpringArm->TargetArmLength = 900.f * (1 - GetController()->GetControlRotation().Vector().Z);
+}
+
+void ABaseCharacter::ZoomCameraRate(float AxisValue) {
+	FRotator ControllerRotation = GetController()->GetControlRotation();
+	if ((AxisValue > 0 && ControllerRotation.Vector().Z > -0.6f) || (AxisValue < 0 && ControllerRotation.Vector().Z < 0.6f)) {
+		AddControllerPitchInput(AxisValue * RotationRate * GetWorld()->GetDeltaSeconds());
+	}
+	FVector ControllerVector = ControllerRotation.Vector();
+	if (GetController()->GetControlRotation().Vector().Z < -0.6f) {
+		GetController()->SetControlRotation(FRotator(FVector(ControllerVector.X, ControllerVector.Y, -0.6f).Rotation().Pitch, ControllerRotation.Yaw, ControllerRotation.Roll));
+	} else if (GetController()->GetControlRotation().Vector().Z > 0.6f) {
+		GetController()->SetControlRotation(FRotator(FVector(ControllerVector.X, ControllerVector.Y, 0.6f).Rotation().Pitch, ControllerRotation.Yaw, ControllerRotation.Roll));
+	}
+	SpringArm->TargetArmLength = 900.f * (1 - GetController()->GetControlRotation().Vector().Z);
 }
 
 // Centers the camera behind the character

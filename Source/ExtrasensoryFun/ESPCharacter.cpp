@@ -212,16 +212,30 @@ bool AESPCharacter::GetGrabbableObjectsInReach(TArray<FHitResult>& OutHitResults
 	* the sphere starts from the top of our head if we aim upwards, from the bottom of our feet if we aim downwards, and anything in-between.
 	*/
 	float CapsuleHalfHeight = this->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-	FVector Start = GetActorLocation() + Camera->GetForwardVector() * (TelekinesisConfig.GrabRadius + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
-	// End at the GrabRange + the CapsuleHalfHeight in proportion to how far we aim the camera up or down.
-	FVector End = GetActorLocation() + Camera->GetForwardVector() * (TelekinesisConfig.GrabRange + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
-	FCollisionShape Sphere = FCollisionShape::MakeSphere(TelekinesisConfig.GrabRadius);
+	FVector Start(0.f);
+	FVector End(0.f);
+	
+	// Start and end vectors depend on whether or not there's a target
+	if (Target.GetActor()) {
+		float TargetToCharForwardVectorZ = PositionFromChar(Target.GetComponent()).ForwardVector.Z;
+		FVector TargetToCharForwardVector = FVector(GetActorForwardVector().X, GetActorForwardVector().Y, TargetToCharForwardVectorZ);
+		Start = GetActorLocation() + TargetToCharForwardVector * (TelekinesisConfig.GrabRadius + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
+		// End at the GrabRange + the CapsuleHalfHeight in proportion to how far we aim the camera up or down.
+		End = GetActorLocation() + TargetToCharForwardVector * (TelekinesisConfig.GrabRange + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
+		FCollisionShape Sphere = FCollisionShape::MakeSphere(TelekinesisConfig.GrabRadius);
+	} else {
+		Start = GetActorLocation() + Camera->GetForwardVector() * (TelekinesisConfig.GrabRadius + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
+		// End at the GrabRange + the CapsuleHalfHeight in proportion to how far we aim the camera up or down.
+		End = GetActorLocation() + Camera->GetForwardVector() * (TelekinesisConfig.GrabRange + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
+	}
+	
 	// These parameters will make the sphere sweep inclube overlaps.
 	FCollisionQueryParams Params = FCollisionQueryParams();
 	Params.bFindInitialOverlaps = true;
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(TelekinesisConfig.GrabRadius);
 
 	// Sphere sweep
-	//DrawDebugSphere(GetWorld(), End, TelekinesisConfig.GrabRadius, 20, FColor::Red, false, 3.f); // For a visual on the sweep
+	DrawDebugSphere(GetWorld(), End, TelekinesisConfig.GrabRadius, 20, FColor::Red, false, 3.f); // For a visual on the sweep
 	GetWorld()->SweepMultiByChannel(
 		OutHitResults,
 		Start, End,
@@ -338,7 +352,7 @@ void AESPCharacter::Grab() {
 						// Make the grabbed objects overlap with the camera channel so the spring arm doesn't retract for grabbed objects that end up behind the character
 						HitComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECR_Overlap);
 						// Record object positions relative to the character upon grabbing them
-						PositionsFromChar[i] = HitComponent->GetComponentTransform().GetRelativeTransform(GetActorTransform()).GetLocation();
+						PositionsFromChar[i] = PositionFromChar(HitComponent);
 						break;
 					}
 				}
@@ -396,9 +410,9 @@ bool AESPCharacter::ThrowAimTrace(FHitResult& OutHitResult) const {
 	FVector Start = GetActorLocation() + Camera->GetForwardVector() * (TelekinesisConfig.ThrowAimRadius + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
 	FVector End = GetActorLocation() + Camera->GetForwardVector() * (TelekinesisConfig.ThrowAimRange + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(TelekinesisConfig.ThrowAimRadius);
-	DrawDebugLine(GetWorld(), GetActorLocation(), End, FColor::Purple, false, 5.f);
-	DrawDebugSphere(GetWorld(), Start, TelekinesisConfig.ThrowAimRadius, 30, FColor::Blue, false, 5.f);
-	DrawDebugSphere(GetWorld(), End, TelekinesisConfig.ThrowAimRadius, 30, FColor::Blue, false, 5.f);
+	//DrawDebugLine(GetWorld(), GetActorLocation(), End, FColor::Purple, false, 5.f);
+	//DrawDebugSphere(GetWorld(), Start, TelekinesisConfig.ThrowAimRadius, 30, FColor::Blue, false, 5.f);
+	//DrawDebugSphere(GetWorld(), End, TelekinesisConfig.ThrowAimRadius, 30, FColor::Blue, false, 5.f);
 	GetWorld()->SweepSingleByChannel(
 		OutHitResult,
 		Start, End,
@@ -436,7 +450,7 @@ int AESPCharacter::GetFarthestGrabbedObject() const {
 		if (UPrimitiveComponent* Component = PhysicsHandles[i]->GetGrabbedComponent()) {
 			// Get the grabbed object's *current* location relative to the character.
 			// Because the object may be in a different position from the one recorded in the TArray that we constantly move the object to in Tick
-			FVector CurrentPosFromChar = Component->GetComponentTransform().GetRelativeTransform(GetActorTransform()).GetLocation();
+			FVector CurrentPosFromChar = PositionFromChar(Component);
 			// Eventually gets us the physics handle component that has the object that's farthest frontwards from the character's aim
 			if (CurrentPosFromChar.X - FMath::Abs(CurrentPosFromChar.Y) > Distance || !Distance) {
 				Index = i;
