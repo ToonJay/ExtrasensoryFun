@@ -23,7 +23,7 @@ ABaseCharacter::ABaseCharacter() {
 	// Create the camera and attach it to the spring arm
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);
-
+	
 	// Create health component
 	Health = CreateDefaultSubobject<UHealthComponent>(TEXT("Health"));
 
@@ -35,6 +35,7 @@ ABaseCharacter::ABaseCharacter() {
 		GetCharacterMovement()->bOrientRotationToMovement = true;
 	} else {
 		bUseControllerRotationYaw = false;
+		GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	}
 	GetCharacterMovement()->RotationRate.Yaw = 540.f;
 }
@@ -45,6 +46,7 @@ void ABaseCharacter::BeginPlay() {
 
 }
 
+// Get component's relative position from the Character
 FVector ABaseCharacter::PositionFromChar(UPrimitiveComponent* Component) const {
 	return Component->GetComponentTransform().GetRelativeTransform(GetActorTransform()).GetLocation();
 }
@@ -53,18 +55,18 @@ FVector ABaseCharacter::PositionFromChar(UPrimitiveComponent* Component) const {
 void ABaseCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 
-	if (Target.GetActor() && Cast<ABaseCharacter>(Target.GetActor())->GetController()) {
+	/**
+	* If there's a Target, rotate character's yaw towards the Target and set SpringArm's relative location to 
+	* the middle of the distance between the Target and character (+ 90.f on the Z axis).
+	* Otherwise, reset Target and set the SpringArm's relative location to FVector(0.f, 0.f, 90.f)
+	*/
+	if (Target.GetActor() && Cast<ABaseCharacter>(Target.GetActor())->GetController() && Cast<APlayerController>(GetController())) {
 		FVector TargetDirection = Target.GetActor()->GetActorLocation() - GetActorLocation();
 		SetActorRotation(FRotator(GetActorRotation().Pitch, TargetDirection.Rotation().Yaw, GetActorRotation().Roll));
-		SpringArm->SetRelativeLocation(PositionFromChar(Target.GetComponent()) / 2 + FVector(0.f,0.f,90.f));
+		SpringArm->SetRelativeLocation(PositionFromChar(Target.GetComponent()) / 2 + FVector(0.f, 0.f, 90.f));
 	} else {
 		Target.Init();
 		SpringArm->SetRelativeLocation(FVector(0.f, 0.f, 90.f));
-	}
-	
-	if (Cast<APlayerController>(GetController())) {
-		UE_LOG(LogTemp, Warning, TEXT("%f"), GetController()->GetControlRotation().Vector().Z);
-		UE_LOG(LogTemp, Warning, TEXT("%f"), SpringArm->TargetArmLength);
 	}
 }
 
@@ -111,7 +113,7 @@ void ABaseCharacter::MoveForward(float AxisValue) {
 }
 
 /**
-* Move character left or right based on AxisValue from player input
+* Move character left or right based on AxisValue from player input.
 * 
 * @param AxisValue, Movement input to apply
 */
@@ -133,32 +135,48 @@ void ABaseCharacter::LookRightRate(float AxisValue) {
 	AddControllerYawInput(AxisValue * RotationRate * GetWorld()->GetDeltaSeconds());
 }
 
+/**
+* Change Spring-Arm's pitch rotation and target arm length at the same time.
+* Zoom-in when rotating upwards, Zoom-out when rotating downwards.
+*/
 void ABaseCharacter::ZoomCamera(float AxisValue) {
 	FRotator ControllerRotation = GetController()->GetControlRotation();
+	// Keep ControllerRotation's Vector's Z axis between -0.6f to 0.6f
 	if ((AxisValue > 0 && ControllerRotation.Vector().Z > -0.6f) || (AxisValue < 0 && ControllerRotation.Vector().Z < 0.6f)) {
 		AddControllerPitchInput(AxisValue);
 	}
+	// Prevent ControllerRotation's Vector's Z axis from going under -0.6f or above 0.6f for Pitch Rotation
 	FVector ControllerVector = ControllerRotation.Vector();
 	if (GetController()->GetControlRotation().Vector().Z < -0.6f) {
 		GetController()->SetControlRotation(FRotator(FVector(ControllerVector.X, ControllerVector.Y, -0.6f).Rotation().Pitch, ControllerRotation.Yaw, ControllerRotation.Roll));
 	} else if (GetController()->GetControlRotation().Vector().Z > 0.6f) {
 		GetController()->SetControlRotation(FRotator(FVector(ControllerVector.X, ControllerVector.Y, 0.6f).Rotation().Pitch, ControllerRotation.Yaw, ControllerRotation.Roll));
 	}
-	SpringArm->TargetArmLength = 900.f * (1 - GetController()->GetControlRotation().Vector().Z);
+	// Scale SpringArm's target arm length to ControllerRotation's Vector's Z axis
+	SpringArm->TargetArmLength = 1200.f * (1 - GetController()->GetControlRotation().Vector().Z);
 }
 
+/**
+* Change Spring-Arm's pitch rotation and target arm length at the same time.
+* Zoom-in when rotating upwards, Zoom-out when rotating downwards.
+* Same as ZoomCamera, but using RotationRate and GetDeltaSeconds().
+* For gamepads only.
+*/
 void ABaseCharacter::ZoomCameraRate(float AxisValue) {
 	FRotator ControllerRotation = GetController()->GetControlRotation();
+	// Keep ControllerRotation's Vector's Z axis between -0.6f to 0.6f
 	if ((AxisValue > 0 && ControllerRotation.Vector().Z > -0.6f) || (AxisValue < 0 && ControllerRotation.Vector().Z < 0.6f)) {
 		AddControllerPitchInput(AxisValue * RotationRate * GetWorld()->GetDeltaSeconds());
 	}
+	// Prevent ControllerRotation's Vector's Z axis from going under -0.6f or above 0.6f for Pitch Rotation
 	FVector ControllerVector = ControllerRotation.Vector();
 	if (GetController()->GetControlRotation().Vector().Z < -0.6f) {
 		GetController()->SetControlRotation(FRotator(FVector(ControllerVector.X, ControllerVector.Y, -0.6f).Rotation().Pitch, ControllerRotation.Yaw, ControllerRotation.Roll));
 	} else if (GetController()->GetControlRotation().Vector().Z > 0.6f) {
 		GetController()->SetControlRotation(FRotator(FVector(ControllerVector.X, ControllerVector.Y, 0.6f).Rotation().Pitch, ControllerRotation.Yaw, ControllerRotation.Roll));
 	}
-	SpringArm->TargetArmLength = 900.f * (1 - GetController()->GetControlRotation().Vector().Z);
+	// Scale SpringArm's target arm length to ControllerRotation's Vector's Z axis
+	SpringArm->TargetArmLength = 1200.f * (1 - GetController()->GetControlRotation().Vector().Z);
 }
 
 // Centers the camera behind the character
@@ -166,14 +184,19 @@ void ABaseCharacter::CenterCameraBehindCharacter() {
 	GetController()->SetControlRotation(GetActorRotation());
 }
 
+// Lock camera on a target that the character is facing
 void ABaseCharacter::TargetLockOn() {
+	// Start by centering the camera behind the character
 	GetController()->SetControlRotation(GetActorRotation());
+	// If no Target locked on, sphere sweep for one
+	// Otherwise, reset target and set camera back to normal
 	if (!Target.GetActor()) {
 		float CapsuleHalfHeight = this->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-		FVector Start = GetActorLocation() + GetActorForwardVector() * (800.f + CapsuleHalfHeight);
 		// + the CapsuleHalfHeight in proportion to how far we aim the camera up or down.
+		FVector Start = GetActorLocation() + GetActorForwardVector() * (800.f + CapsuleHalfHeight);
 		FVector End = GetActorLocation() + GetActorForwardVector() * (10000.f + CapsuleHalfHeight);
 		FCollisionShape Sphere = FCollisionShape::MakeSphere(800.f);
+		// Sweep with sphere in the TelekinesisAttack channel
 		GetWorld()->SweepSingleByChannel(
 			Target,
 			Start, End,
@@ -181,6 +204,8 @@ void ABaseCharacter::TargetLockOn() {
 			ECC_GameTraceChannel2,
 			Sphere
 		);
+		// If there's a Target, use controller rotation yaw and don't orient rotation to movement
+		// Otherwise, do the opposite
 		if (Target.GetActor()) {
 			bUseControllerRotationYaw = true;
 			GetCharacterMovement()->bOrientRotationToMovement = false;
@@ -189,7 +214,9 @@ void ABaseCharacter::TargetLockOn() {
 			GetCharacterMovement()->bOrientRotationToMovement = true;
 		}
 	} else {
+		// Reset Target
 		Target.Init();
+		// Set camera back to normal
 		bUseControllerRotationYaw = false;
 		GetCharacterMovement()->bOrientRotationToMovement = true;
 	}

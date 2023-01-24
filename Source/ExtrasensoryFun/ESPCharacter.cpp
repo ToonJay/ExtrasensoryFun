@@ -50,6 +50,8 @@ void AESPCharacter::BeginPlay() {
 		EPSCPoolMethod::None,
 		false
 	);
+
+	// Set feet emitters for the 2nd and third jumps of the triple jump
 	JumpEmitterLeft1 = UGameplayStatics::SpawnEmitterAttached(
 		SecondJumpFX,
 		GetMesh(),
@@ -106,8 +108,7 @@ void AESPCharacter::Tick(float DeltaTime) {
 
 	/**
 	* Set the location and rotation of each grabbed object.
-	* TargetLocation is always set to the relative position from the character assigned during grabbing.
-	* Use the camera viewpoint for the direction of TargetLocation.
+	* TargetLocation is always set to the relative position from the character assigned during grabbing, except for the Z axis.
 	* Rotation is set to the TargetRotation of the spring arm.
 	*/
 	for (int i = 0; i < PhysicsHandles.Num(); i++) {
@@ -115,15 +116,39 @@ void AESPCharacter::Tick(float DeltaTime) {
 			// If, while grabbing the component, it gets destroyed by an incoming projectile, release the component.
 			if (Component->IsPendingKill()) {
 				PhysicsHandles[i]->ReleaseComponent();
-			} 
-			float CapsuleHalfHeight = this->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-			// Get target location
-			FVector TargetLocation = GetActorLocation()
-				+ FVector(GetActorForwardVector().X, GetActorForwardVector().Y, Camera->GetForwardVector().Z) * (FMath::Clamp(PositionsFromChar[i].X, 100, PositionsFromChar[i].X))
-				+ GetActorRightVector() * PositionsFromChar[i].Y
-				+ GetActorUpVector() * 90.f;
-			// Set target location and rotation for the grabbed component
-			PhysicsHandles[i]->SetTargetLocationAndRotation(TargetLocation, SpringArm->GetTargetRotation());
+			}
+
+			FVector FwdVector;
+			FVector Location;
+			/**
+			* Get Location and ForwardVector to use in HandleTargetLocation.
+			* Location and ForwardVector change depending on if there's a Target or not.
+			*/
+			if (Target.GetActor()) {
+				// Component's relative position X from the character divided by the Target's
+				float PosFromCharXRatio = PositionFromChar(Component).X / PositionFromChar(Target.GetComponent()).X;
+				// Will become Location's Z axis
+				float CompPosZ = FMath::Clamp(PosFromCharXRatio, PosFromCharXRatio, 1.f) * PositionFromChar(Target.GetComponent()).Z;
+				// CompPosZ calculation changes depending on if it's negative or not
+				if (CompPosZ < 0) {
+					CompPosZ = GetActorLocation().Z + 90 - FMath::Clamp(-CompPosZ, PositionFromChar(Target.GetComponent()).Z, GetActorLocation().Z);
+				} else {
+					CompPosZ = FMath::Clamp(CompPosZ + 192.f, GetActorLocation().Z + 90.f, PositionFromChar(Target.GetComponent()).Z + 192.f);
+				}
+				// Location and FwdVector if there's a Target.
+				Location = FVector(GetActorLocation().X, GetActorLocation().Y, CompPosZ);
+				FwdVector = GetActorForwardVector();
+			} else {
+				// Location and FwdVector if there isn't a Target.
+				Location = GetActorLocation() + FVector(0.f, 0.f, 90.f);
+				FwdVector = FVector(GetActorForwardVector().X, GetActorForwardVector().Y, Camera->GetForwardVector().Z);
+			}
+			// Get the physics handle's target location
+			FVector HandleTargetLocation = Location
+				+ FwdVector * (FMath::Clamp(PositionsFromChar[i].X, 100, PositionsFromChar[i].X))
+				+ GetActorRightVector() * PositionsFromChar[i].Y;
+			// Set target location and rotation for the grabbed component's physics handle
+			PhysicsHandles[i]->SetTargetLocationAndRotation(HandleTargetLocation, SpringArm->GetTargetRotation());
 		}
 	}
 
