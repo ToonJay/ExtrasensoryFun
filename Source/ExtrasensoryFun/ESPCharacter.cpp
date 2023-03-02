@@ -13,6 +13,7 @@
 #include "ShooterProjectile.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Blueprint/UserWidget.h"
 
 // Default constructor
 AESPCharacter::AESPCharacter() {
@@ -36,7 +37,6 @@ void AESPCharacter::BeginPlay() {
 		PositionsFromChar.Add(FVector(0.f));
 		TelekinesisDecals.Add(nullptr);
 	}
-
 	// Set emitter for character's right arm for telekinesis
 	CastEmitter = UGameplayStatics::SpawnEmitterAttached(
 		MuzzleCast,
@@ -50,7 +50,6 @@ void AESPCharacter::BeginPlay() {
 		EPSCPoolMethod::None,
 		false
 	);
-
 	// Set feet emitters for the 2nd and third jumps of the triple jump
 	JumpEmitterLeft1 = UGameplayStatics::SpawnEmitterAttached(
 		SecondJumpFX,
@@ -169,10 +168,32 @@ void AESPCharacter::Tick(float DeltaTime) {
 	if (IsGrabbing) {
 		Grab();
 	} 
+	// Unfreeze and unaim if not grabbing an object anymore
+	if (!IsGrabbingObject()) {
+		CancelAim();
+	}
 	// Freeze character and set velocity to 0 while aiming
 	if (IsFrozen) {
 		SetActorLocation(FreezeLocation);
 		GetCharacterMovement()->Velocity = FVector(0.f);
+	}
+	// If aiming without a target, zoom-in spring-arm/camera
+	if (IsFrozen && !Target.GetActor()) {
+		SpringArm->TargetArmLength = 100.f;
+		SpringArm->SocketOffset = FVector(0.f, 60.f, 0.f);
+	} else {
+		// Scale SpringArm's target arm length to ControllerRotation's Vector's Z axis
+		if (GetController()) {
+			SpringArm->TargetArmLength = 1200.f * (1 - GetController()->GetControlRotation().Vector().Z);
+		}
+		SpringArm->SocketOffset = FVector(0.f, 0.f, 0.f);
+	}
+	
+	// If no Target, if not frozen, if not grabbing, setting movement back to normal
+	if (!IsFrozen && !Target.GetActor() && !IsGrabbing) {
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+	} else {
+		GetCharacterMovement()->bOrientRotationToMovement = false;
 	}
 
 	// Continuously substract from JumpTimer with delta seconds
@@ -196,11 +217,13 @@ void AESPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction(TEXT("Release"), EInputEvent::IE_Pressed, this, &AESPCharacter::Release);
 	PlayerInputComponent->BindAction(TEXT("Throw"), EInputEvent::IE_Pressed, this, &AESPCharacter::ThrowAim);
 	PlayerInputComponent->BindAction(TEXT("Throw"), EInputEvent::IE_Released, this, &AESPCharacter::Throw);
+	PlayerInputComponent->BindAction(TEXT("CancelAim"), EInputEvent::IE_Pressed, this, &AESPCharacter::CancelAim);
 	// Jumping and camera movement player input bind
 	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Pressed, this, &AESPCharacter::Jumping);
 	
 }
 
+// Called when character's movement mode changes
 void AESPCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PrevCustomMode) {
 	Super::OnMovementModeChanged(PrevMovementMode, PrevCustomMode);
 
@@ -242,15 +265,22 @@ bool AESPCharacter::GetGrabbableObjectsInReach(TArray<FHitResult>& OutHitResults
 	
 	// Start and end vectors depend on whether or not there's a target
 	if (Target.GetActor()) {
-		float TargetToCharForwardVectorZ = PositionFromChar(Target.GetComponent()).ForwardVector.Z;
-		FVector TargetToCharForwardVector = FVector(GetActorForwardVector().X, GetActorForwardVector().Y, TargetToCharForwardVectorZ);
-		Start = GetActorLocation() + TargetToCharForwardVector * (TelekinesisConfig.GrabRadius + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
-		// End at the GrabRange + the CapsuleHalfHeight in proportion to how far we aim the camera up or down.
-		End = GetActorLocation() + TargetToCharForwardVector * (TelekinesisConfig.GrabRange + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
+		// GrabRadius divided by Target's Position's X axis
+		float XRatio = TelekinesisConfig.GrabRadius / PositionFromChar(Target.GetComponent()).X;
+		// Will become Location's Z axis
+		float PosZ = FMath::Clamp(XRatio, XRatio, 1.f) * PositionFromChar(Target.GetComponent()).Z;
+		// CompPosZ calculation changes depending on if it's negative or not
+		if (PosZ < 0) {
+			PosZ = GetActorLocation().Z - FMath::Clamp(-PosZ, PositionFromChar(Target.GetComponent()).Z, GetActorLocation().Z);
+		} else {
+			PosZ = FMath::Clamp(PosZ, GetActorLocation().Z, PositionFromChar(Target.GetComponent()).Z);
+		}
+		FVector Location = FVector(GetActorLocation().X, GetActorLocation().Y, PosZ);
+		Start = Location + GetActorForwardVector() * (TelekinesisConfig.GrabRadius + CapsuleHalfHeight * FMath::Abs(PositionFromChar(Target.GetComponent()).ForwardVector.Z));
+		End = Location + GetActorForwardVector() * (TelekinesisConfig.GrabRange + CapsuleHalfHeight * FMath::Abs(PositionFromChar(Target.GetComponent()).ForwardVector.Z));
 		FCollisionShape Sphere = FCollisionShape::MakeSphere(TelekinesisConfig.GrabRadius);
 	} else {
 		Start = GetActorLocation() + Camera->GetForwardVector() * (TelekinesisConfig.GrabRadius + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
-		// End at the GrabRange + the CapsuleHalfHeight in proportion to how far we aim the camera up or down.
 		End = GetActorLocation() + Camera->GetForwardVector() * (TelekinesisConfig.GrabRange + CapsuleHalfHeight * FMath::Abs(Camera->GetForwardVector().Z));
 	}
 	
@@ -260,7 +290,7 @@ bool AESPCharacter::GetGrabbableObjectsInReach(TArray<FHitResult>& OutHitResults
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(TelekinesisConfig.GrabRadius);
 
 	// Sphere sweep
-	DrawDebugSphere(GetWorld(), End, TelekinesisConfig.GrabRadius, 20, FColor::Red, false, 3.f); // For a visual on the sweep
+	//DrawDebugSphere(GetWorld(), End, TelekinesisConfig.GrabRadius, 20, FColor::Red, false, 3.f); // For a visual on the sweep
 	GetWorld()->SweepMultiByChannel(
 		OutHitResults,
 		Start, End,
@@ -305,8 +335,6 @@ void AESPCharacter::StartGrabbing() {
 	IsGrabbing = true;
 	if (!Target.GetActor()) {
 		GetController()->SetControlRotation(GetActorRotation());
-		bUseControllerRotationYaw = true;
-		GetCharacterMovement()->bOrientRotationToMovement = false;
 	}
 }
 
@@ -315,11 +343,7 @@ void AESPCharacter::StartGrabbing() {
 * Orient rotation to movement and don't use controller rotation yaw.
 */
 void AESPCharacter::StopGrabbing() {
-	IsGrabbing = false;
-	if (!Target.GetActor()) {
-		bUseControllerRotationYaw = false;
-		GetCharacterMovement()->bOrientRotationToMovement = true;
-	}
+		IsGrabbing = false;
 }
 
 /**
@@ -352,7 +376,7 @@ void AESPCharacter::Grab() {
 						// Detach it from any attached actor such as a trigger or an actor composed of many actors
 						HitActor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 						HitActor->Tags.Add("Grabbed"); // Useful for tracking the objects that are currently being grabbed
-
+						HitActor->SetOwner(this);
 						// Grab the component
 						PhysicsHandles[y]->GrabComponentAtLocationWithRotation(
 							HitComponent,
@@ -414,12 +438,29 @@ void AESPCharacter::Release() {
 */ 
 void AESPCharacter::ThrowAim() {
 	if (IsGrabbingObject()) {
-		IsFrozen = true;
-		FreezeLocation = GetActorLocation();
-		if (!Target.GetActor()) {
-			GetController()->SetControlRotation(GetActorRotation());
-			bUseControllerRotationYaw = true;
-			GetCharacterMovement()->bOrientRotationToMovement = false;
+		if (!IsFrozen) {
+			// Center camera if no target
+			FreezeLocation = GetActorLocation();
+			if (!Target.GetActor()) {
+				GetController()->SetControlRotation(GetActorRotation());
+			}
+			// Freeze character movement
+			IsFrozen = true;
+			// Deactivate jump fx
+			if (SecondJumpFX) {
+				JumpEmitterLeft1->Deactivate();
+				JumpEmitterRight1->Deactivate();
+			}
+			if (ThirdJumpFX) {
+				JumpEmitterLeft2->Deactivate();
+				JumpEmitterRight2->Deactivate();
+			}
+			// Reset triple jump
+			GetCharacterMovement()->JumpZVelocity = 1260.f;
+			JumpMaxHoldTime = 0.3f;
+			JumpCount = 0;
+		} else {
+			IsAiming = true;
 		}
 	}
 }
@@ -492,8 +533,8 @@ int AESPCharacter::GetFarthestGrabbedObject() const {
 * The reason we do this is to prevent a grabbed object being thrown towards another grabbed object as much as possible.
 */
 void AESPCharacter::Throw() {
-	// Check if there's currently at least one object being grabbed
-	if (IsGrabbingObject()) {
+	// Check if there's currently at least one object being grabbed and if we're aiming
+	if (IsGrabbingObject() && IsAiming) {
 		int ThrowIndex;
 		FHitResult HitResult;
 		// If there's a Target, get object closest to the target.
@@ -531,13 +572,19 @@ void AESPCharacter::Throw() {
 		} else {
 			Component->AddImpulse(Camera->GetForwardVector() * TelekinesisConfig.ThrowForce, NAME_None, true);
 		}
-		// Unfreeze character
-		IsFrozen = false;
-		// If no Target, orient rotation to movement and don't use controller rotation yaw
-		if (!Target.GetActor()) {
-			bUseControllerRotationYaw = false;
-			GetCharacterMovement()->bOrientRotationToMovement = true;
+		if (!IsGrabbingObject()) {
+			// Unfreeze character
+			IsFrozen = false;
+			IsAiming = false;
 		}
+	}
+}
+
+// Stop freezing and aiming
+void AESPCharacter::CancelAim() {
+	if (IsFrozen) {
+		IsFrozen = false;
+		IsAiming = false;
 	}
 }
 

@@ -62,6 +62,14 @@ public:
 	// Called when movement mode changes
 	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PrevCustomMode) override;
 
+	// Getter Methods
+	bool GetIsFrozen() { return IsFrozen; }
+	bool GetIsAiming() { return IsAiming; }
+
+	// Setter Methods
+	void SetIsFrozen(bool bIsFrozen) { IsFrozen = bIsFrozen; }
+	void SetIsaiming(bool bIsAiming) { IsAiming = bIsAiming; }
+
 private:
 	// -----Telekinesis-----
 	UPROPERTY(EditAnywhere, Category = Config)
@@ -80,11 +88,13 @@ private:
 	// Functions and properties for throwing
 	void ThrowAim();
 	bool IsFrozen = false;
+	bool IsAiming = false;
 	FVector FreezeLocation;
 	bool ThrowAimTrace(FHitResult& OutHitResult) const;
 	int GetClosestGrabbedObject(FHitResult* HitResult) const;
 	int GetFarthestGrabbedObject() const;
 	void Throw();
+	void CancelAim();
 	
 	// -----Jumping-----
 	// Jump Properties
@@ -121,5 +131,5 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Telekinesis FX")
 	UMaterialInstance* TelekinesisDecalMaterial;
 	// Attaches a decal to an object being grabbed
-	void AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, int Index); 
+	void AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, int Index);
 };

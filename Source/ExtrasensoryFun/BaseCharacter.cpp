@@ -8,6 +8,8 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include <Kismet/KismetMathLibrary.h>
+#include "Engine/StaticMeshActor.h"
+#include "Blueprint/UserWidget.h"
 
 // Default constructor
 ABaseCharacter::ABaseCharacter() {
@@ -18,6 +20,7 @@ ABaseCharacter::ABaseCharacter() {
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("Spring Arm"));
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->bUsePawnControlRotation = false;
+	bUseControllerRotationYaw = false;
 	SpringArm->bEnableCameraRotationLag = true;
 
 	// Create the camera and attach it to the spring arm
@@ -34,7 +37,6 @@ ABaseCharacter::ABaseCharacter() {
 	if (Cast<APlayerController>(GetController())) {
 		GetCharacterMovement()->bOrientRotationToMovement = true;
 	} else {
-		bUseControllerRotationYaw = false;
 		GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	}
 	GetCharacterMovement()->RotationRate.Yaw = 540.f;
@@ -43,7 +45,6 @@ ABaseCharacter::ABaseCharacter() {
 // Called when the game starts or when spawned
 void ABaseCharacter::BeginPlay() {
 	Super::BeginPlay();
-
 }
 
 // Get component's relative position from the Character
@@ -64,8 +65,9 @@ void ABaseCharacter::Tick(float DeltaTime) {
 		FVector TargetDirection = Target.GetActor()->GetActorLocation() - GetActorLocation();
 		SetActorRotation(FRotator(GetActorRotation().Pitch, TargetDirection.Rotation().Yaw, GetActorRotation().Roll));
 		SpringArm->SetRelativeLocation(PositionFromChar(Target.GetComponent()) / 2 + FVector(0.f, 0.f, 90.f));
+		TargetArrow->SetActorLocation(Target.GetActor()->GetActorLocation() + FVector(0.f, 0.f, 90.f));
+		TargetArrow->AddActorLocalRotation(FRotator(0.f, 5.f, 0.f));
 	} else {
-		Target.Init();
 		SpringArm->SetRelativeLocation(FVector(0.f, 0.f, 90.f));
 	}
 }
@@ -98,6 +100,15 @@ void ABaseCharacter::HandleDeath() {
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	// Set collision response to TelekinesisAttack tracing channel to ignore
 	GetMesh()->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECR_Ignore);
+}
+
+void ABaseCharacter::ResetTargeting() {
+	// Destroy the target arrow
+	if (TargetArrow) {
+		TargetArrow->Destroy();
+	}
+	// Reset target
+	Target.Init();
 }
 
 /** 
@@ -152,8 +163,6 @@ void ABaseCharacter::ZoomCamera(float AxisValue) {
 	} else if (GetController()->GetControlRotation().Vector().Z > 0.6f) {
 		GetController()->SetControlRotation(FRotator(FVector(ControllerVector.X, ControllerVector.Y, 0.6f).Rotation().Pitch, ControllerRotation.Yaw, ControllerRotation.Roll));
 	}
-	// Scale SpringArm's target arm length to ControllerRotation's Vector's Z axis
-	SpringArm->TargetArmLength = 1200.f * (1 - GetController()->GetControlRotation().Vector().Z);
 }
 
 /**
@@ -175,19 +184,18 @@ void ABaseCharacter::ZoomCameraRate(float AxisValue) {
 	} else if (GetController()->GetControlRotation().Vector().Z > 0.6f) {
 		GetController()->SetControlRotation(FRotator(FVector(ControllerVector.X, ControllerVector.Y, 0.6f).Rotation().Pitch, ControllerRotation.Yaw, ControllerRotation.Roll));
 	}
-	// Scale SpringArm's target arm length to ControllerRotation's Vector's Z axis
-	SpringArm->TargetArmLength = 1200.f * (1 - GetController()->GetControlRotation().Vector().Z);
 }
 
 // Centers the camera behind the character
 void ABaseCharacter::CenterCameraBehindCharacter() {
-	GetController()->SetControlRotation(GetActorRotation());
+	if (!Target.GetActor()) {
+		GetController()->SetControlRotation(GetActorRotation());
+	}
 }
 
 // Lock camera on a target that the character is facing
 void ABaseCharacter::TargetLockOn() {
 	// Start by centering the camera behind the character
-	GetController()->SetControlRotation(GetActorRotation());
 	// If no Target locked on, sphere sweep for one
 	// Otherwise, reset target and set camera back to normal
 	if (!Target.GetActor()) {
@@ -207,17 +215,19 @@ void ABaseCharacter::TargetLockOn() {
 		// If there's a Target, use controller rotation yaw and don't orient rotation to movement
 		// Otherwise, do the opposite
 		if (Target.GetActor()) {
-			bUseControllerRotationYaw = true;
-			GetCharacterMovement()->bOrientRotationToMovement = false;
+			TargetArrow = GetWorld()->SpawnActor<AStaticMeshActor>(AStaticMeshActor::StaticClass());
+			TargetArrow->SetMobility(EComponentMobility::Movable);
+			TargetArrow->SetActorLocation(Target.GetActor()->GetActorLocation() + FVector(0.f,0.f,90.f));
+			TargetArrow->AddActorLocalRotation(FRotator(180.f, 0.f, 0.f));
+			TargetArrow->SetActorEnableCollision(ECollisionEnabled::NoCollision);
+			UStaticMeshComponent* MeshComponent = TargetArrow->GetStaticMeshComponent();
+			if (MeshComponent) {
+				MeshComponent->SetStaticMesh(TargetArrowMesh);
+			}
 		} else {
-			bUseControllerRotationYaw = false;
-			GetCharacterMovement()->bOrientRotationToMovement = true;
+			GetController()->SetControlRotation(GetActorRotation());
 		}
 	} else {
-		// Reset Target
-		Target.Init();
-		// Set camera back to normal
-		bUseControllerRotationYaw = false;
-		GetCharacterMovement()->bOrientRotationToMovement = true;
+		ResetTargeting();
 	}
 }

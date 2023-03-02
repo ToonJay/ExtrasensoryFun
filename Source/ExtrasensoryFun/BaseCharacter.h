@@ -9,6 +9,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UHealthComponent;
+class AStaticMeshActor;
 /**
 * This class is for the basic functionality for any character.
 * Responsible for player inputs as well as basic data that can be useful for any type of character,
@@ -21,7 +22,7 @@ class EXTRASENSORYFUN_API ABaseCharacter : public ACharacter {
 public:
 	// Default constructor
 	ABaseCharacter();
-
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -39,7 +40,7 @@ protected:
 	// ----Camera-----
 	FHitResult Target;
 	FVector PositionFromChar(UPrimitiveComponent* Component) const;
-
+	
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -49,10 +50,13 @@ public:
 	// Handle character death
 	void HandleDeath();
 
+	// Reset targeting for player
+	void ResetTargeting();
+
 	// Getter methods
 	USpringArmComponent* GetSpringArm() const { return SpringArm; }
 	UCameraComponent* GetCamera() const { return Camera; }
-	
+	FHitResult GetTarget() const { return Target; }
 
 private:
 	// -----Character movement-----
@@ -67,4 +71,7 @@ private:
 	void ZoomCameraRate(float AxisValue);
 	void CenterCameraBehindCharacter();
 	void TargetLockOn();
+	UPROPERTY(EditAnywhere)
+	UStaticMesh* TargetArrowMesh;
+	AStaticMeshActor* TargetArrow;
 };

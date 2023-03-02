@@ -4,6 +4,8 @@
 #include "HealthComponent.h"
 #include "ExtrasensoryFunGameMode.h"
 #include <Kismet/GameplayStatics.h>
+#include "BaseCharacter.h"
+#include "EspCharacter.h"
 
 // Default constructor
 UHealthComponent::UHealthComponent()
@@ -45,5 +47,13 @@ void UHealthComponent::DamageTaken(AActor* DamagedActor, float Damage, const UDa
 	// Check for death
 	if (IsDead()) {
 		ExtrasensoryFunGameMode->ActorDied(DamagedActor);
+		if (ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(DamageCauser->GetOwner())) {
+			if (BaseCharacter->GetTarget().GetActor()) {
+				BaseCharacter->ResetTargeting();
+				if (AESPCharacter* ESPCharacter = Cast<AESPCharacter>(DamageCauser->GetOwner())) {
+					ESPCharacter->SetIsFrozen(false);
+				}
+			}
+		}
 	}
 }
