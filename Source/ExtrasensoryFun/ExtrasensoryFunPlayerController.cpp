@@ -12,7 +12,7 @@ void AExtrasensoryFunPlayerController::Tick(float DeltaTime) {
 	if (Aiming) {
 		if (AESPCharacter* PlayerChar = Cast<AESPCharacter>(GetPawn())) {
 			// Add aiming UI when aiming, remove it when not
-			if (PlayerChar->GetIsFrozen()) {
+			if (PlayerChar->GetIsFrozen() && !PlayerChar->GetTarget().GetActor()) {
 				if (!Aiming->IsInViewport()) {
 					Aiming->AddToViewport();
 				}

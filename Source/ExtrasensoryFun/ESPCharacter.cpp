@@ -50,6 +50,34 @@ void AESPCharacter::BeginPlay() {
 		EPSCPoolMethod::None,
 		false
 	);
+	CastEmitter->SetTranslucentSortPriority(1);
+	AimEmitter = UGameplayStatics::SpawnEmitterAttached(
+		MuzzleAim,
+		GetMesh(),
+		TEXT("Muzzle_01"),
+		FVector(ForceInit),
+		FRotator::ZeroRotator,
+		FVector(1.f),
+		EAttachLocation::KeepRelativeOffset,
+		false,
+		EPSCPoolMethod::None,
+		false
+	);
+	AimEmitter->SetTranslucentSortPriority(1);
+	// Set glow emitter for when character uses telekinesis
+	GlowEmitter = UGameplayStatics::SpawnEmitterAttached(
+		MuzzleGlow,
+		GetMesh(),
+		TEXT("Status"),
+		FVector(ForceInit),
+		FRotator::ZeroRotator,
+		FVector(1.f),
+		EAttachLocation::KeepRelativeOffset,
+		false,
+		EPSCPoolMethod::None,
+		false
+	);
+	GlowEmitter->SetTranslucentSortPriority(1);
 	// Set feet emitters for the 2nd and third jumps of the triple jump
 	JumpEmitterLeft1 = UGameplayStatics::SpawnEmitterAttached(
 		SecondJumpFX,
@@ -152,7 +180,7 @@ void AESPCharacter::Tick(float DeltaTime) {
 	}
 
 	// Activate the emitter when grabbing at least 1 object, deactivate when not
-	if (CastEmitter) {
+	if (CastEmitter && AimEmitter) {
 		if (IsGrabbingObject()) {
 			if (!CastEmitter->IsActive()) {
 				CastEmitter->Activate();
@@ -167,7 +195,7 @@ void AESPCharacter::Tick(float DeltaTime) {
 	// Keep grabbing as long as the "Grab" action input is pressed
 	if (IsGrabbing) {
 		Grab();
-	} 
+	}
 	// Unfreeze and unaim if not grabbing an object anymore
 	if (!IsGrabbingObject()) {
 		CancelAim();
@@ -188,7 +216,7 @@ void AESPCharacter::Tick(float DeltaTime) {
 		}
 		SpringArm->SocketOffset = FVector(0.f, 0.f, 0.f);
 	}
-	
+
 	// If no Target, if not frozen, if not grabbing, setting movement back to normal
 	if (!IsFrozen && !Target.GetActor() && !IsGrabbing) {
 		GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -204,6 +232,12 @@ void AESPCharacter::Tick(float DeltaTime) {
 	// Whenever JumpTimer runs out, set JumpCount to 0
 	if (!GetCharacterMovement()->IsFalling() && JumpTimer <= 0.f) {
 		JumpCount = 0;
+	}
+
+	// Cancel Aim and Stop Aiming when not targeting, aiming or frozen
+	if (!Target.GetActor() && !IsAiming && !IsFrozen) {
+		CancelAim();
+		StopAiming();
 	}
 }
 
@@ -336,6 +370,9 @@ void AESPCharacter::StartGrabbing() {
 	if (!Target.GetActor()) {
 		GetController()->SetControlRotation(GetActorRotation());
 	}
+	if (GlowEmitter) {
+		GlowEmitter->Activate();
+	}
 }
 
 /*
@@ -343,7 +380,10 @@ void AESPCharacter::StartGrabbing() {
 * Orient rotation to movement and don't use controller rotation yaw.
 */
 void AESPCharacter::StopGrabbing() {
-		IsGrabbing = false;
+	IsGrabbing = false;
+	if (GlowEmitter) {
+		GlowEmitter->Deactivate();
+	}
 }
 
 /**
@@ -461,6 +501,11 @@ void AESPCharacter::ThrowAim() {
 			JumpCount = 0;
 		} else {
 			IsAiming = true;
+			if (AimEmitter) {
+				if (!AimEmitter->IsActive()) {
+					AimEmitter->Activate();
+				}
+			}
 		}
 	}
 }
@@ -577,6 +622,9 @@ void AESPCharacter::Throw() {
 			IsFrozen = false;
 			IsAiming = false;
 		}
+		if (AimEmitter) {
+			AimEmitter->Deactivate();
+		}
 	}
 }
 
@@ -585,6 +633,15 @@ void AESPCharacter::CancelAim() {
 	if (IsFrozen) {
 		IsFrozen = false;
 		IsAiming = false;
+	}
+}
+
+// Specific TargetLockOn functionality for ESPCharacter
+void AESPCharacter::TargetLockOn() {
+	Super::TargetLockOn();
+	// And no target and not aiming, cancel aim
+	if(!Target.GetActor() && !IsAiming) {
+		CancelAim();
 	}
 }
 
@@ -668,4 +725,8 @@ void AESPCharacter::AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, in
 	} else {
 		UE_LOG(LogTemp, Error, TEXT("No decal material set!"));
 	}
+}
+
+void AESPCharacter::StopAiming_Implementation() {
+	
 }

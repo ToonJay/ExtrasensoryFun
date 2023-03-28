@@ -39,7 +39,9 @@ protected:
 
 	// ----Camera-----
 	FHitResult Target;
+	float LockOnDistanceLimit = 2400.f;
 	FVector PositionFromChar(UPrimitiveComponent* Component) const;
+	virtual void TargetLockOn(); // virtual since Targetting will have difference effects depending on the character in use
 	
 public:
 	// Called every frame
@@ -56,6 +58,7 @@ public:
 	// Getter methods
 	USpringArmComponent* GetSpringArm() const { return SpringArm; }
 	UCameraComponent* GetCamera() const { return Camera; }
+	UFUNCTION(BlueprintPure)
 	FHitResult GetTarget() const { return Target; }
 
 private:
@@ -70,7 +73,7 @@ private:
 	void ZoomCamera(float AxisValue);
 	void ZoomCameraRate(float AxisValue);
 	void CenterCameraBehindCharacter();
-	void TargetLockOn();
+	
 	UPROPERTY(EditAnywhere)
 	UStaticMesh* TargetArrowMesh;
 	AStaticMeshActor* TargetArrow;

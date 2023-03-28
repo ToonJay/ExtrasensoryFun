@@ -52,6 +52,8 @@ void UHealthComponent::DamageTaken(AActor* DamagedActor, float Damage, const UDa
 				BaseCharacter->ResetTargeting();
 				if (AESPCharacter* ESPCharacter = Cast<AESPCharacter>(DamageCauser->GetOwner())) {
 					ESPCharacter->SetIsFrozen(false);
+					ESPCharacter->SetIsAiming(false);
+					ESPCharacter->StopAiming();
 				}
 			}
 		}

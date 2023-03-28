@@ -57,17 +57,20 @@ void ABaseCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 
 	/**
-	* If there's a Target, rotate character's yaw towards the Target and set SpringArm's relative location to 
+	* If there's a Target within LockOnDistanceLimit, rotate character's yaw towards the Target and set SpringArm's relative location to 
 	* the middle of the distance between the Target and character (+ 90.f on the Z axis).
-	* Otherwise, reset Target and set the SpringArm's relative location to FVector(0.f, 0.f, 90.f)
+	* Otherwise, reset targeting (if there's a target) and set the SpringArm's relative location to FVector(0.f, 0.f, 90.f)
 	*/
-	if (Target.GetActor() && Cast<ABaseCharacter>(Target.GetActor())->GetController() && Cast<APlayerController>(GetController())) {
+	if (Target.GetActor() && Cast<ABaseCharacter>(Target.GetActor())->GetController() && Cast<APlayerController>(GetController()) && Target.GetActor()->GetHorizontalDistanceTo(this) < LockOnDistanceLimit) {
 		FVector TargetDirection = Target.GetActor()->GetActorLocation() - GetActorLocation();
 		SetActorRotation(FRotator(GetActorRotation().Pitch, TargetDirection.Rotation().Yaw, GetActorRotation().Roll));
 		SpringArm->SetRelativeLocation(PositionFromChar(Target.GetComponent()) / 2 + FVector(0.f, 0.f, 90.f));
 		TargetArrow->SetActorLocation(Target.GetActor()->GetActorLocation() + FVector(0.f, 0.f, 90.f));
 		TargetArrow->AddActorLocalRotation(FRotator(0.f, 5.f, 0.f));
 	} else {
+		if (Target.GetActor()) {
+			ResetTargeting();
+		}
 		SpringArm->SetRelativeLocation(FVector(0.f, 0.f, 90.f));
 	}
 }
@@ -212,9 +215,9 @@ void ABaseCharacter::TargetLockOn() {
 			ECC_GameTraceChannel2,
 			Sphere
 		);
-		// If there's a Target, use controller rotation yaw and don't orient rotation to movement
-		// Otherwise, do the opposite
-		if (Target.GetActor()) {
+		// If there's a Target that's within LockOnDistanceLimit, use controller rotation yaw and don't orient rotation to movement
+		// Otherwise, do the opposite + reset targetting
+		if (Target.GetActor() && Target.GetActor()->GetHorizontalDistanceTo(this) <= LockOnDistanceLimit) {
 			TargetArrow = GetWorld()->SpawnActor<AStaticMeshActor>(AStaticMeshActor::StaticClass());
 			TargetArrow->SetMobility(EComponentMobility::Movable);
 			TargetArrow->SetActorLocation(Target.GetActor()->GetActorLocation() + FVector(0.f,0.f,90.f));
@@ -225,6 +228,7 @@ void ABaseCharacter::TargetLockOn() {
 				MeshComponent->SetStaticMesh(TargetArrowMesh);
 			}
 		} else {
+			ResetTargeting();
 			GetController()->SetControlRotation(GetActorRotation());
 		}
 	} else {

@@ -68,7 +68,11 @@ public:
 
 	// Setter Methods
 	void SetIsFrozen(bool bIsFrozen) { IsFrozen = bIsFrozen; }
-	void SetIsaiming(bool bIsAiming) { IsAiming = bIsAiming; }
+	void SetIsAiming(bool bIsAiming) { IsAiming = bIsAiming; }
+
+	// Blueprint function to call from CPP
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void StopAiming();
 
 private:
 	// -----Telekinesis-----
@@ -95,6 +99,8 @@ private:
 	int GetFarthestGrabbedObject() const;
 	void Throw();
 	void CancelAim();
+	virtual void TargetLockOn() override;
+	
 	
 	// -----Jumping-----
 	// Jump Properties
@@ -125,7 +131,13 @@ private:
 	// Particles for telekinesis casting effect
 	UPROPERTY(EditAnywhere, Category = "Telekinesis FX")
 	UParticleSystem* MuzzleCast;
+	UPROPERTY(EditAnywhere, Category = "Telekinesis FX")
+	UParticleSystem* MuzzleAim;
+	UPROPERTY(EditAnywhere, Category = "Telekinesis FX")
+	UParticleSystem* MuzzleGlow;
 	UParticleSystemComponent* CastEmitter;
+	UParticleSystemComponent* AimEmitter;
+	UParticleSystemComponent* GlowEmitter;
 	// Decals for objects being grabbed
 	TArray<UDecalComponent*> TelekinesisDecals;
 	UPROPERTY(EditAnywhere, Category = "Telekinesis FX")
