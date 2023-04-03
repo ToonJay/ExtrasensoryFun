@@ -70,7 +70,9 @@ public:
 	void SetIsFrozen(bool bIsFrozen) { IsFrozen = bIsFrozen; }
 	void SetIsAiming(bool bIsAiming) { IsAiming = bIsAiming; }
 
-	// Blueprint function to call from CPP
+	// Blueprint functions to call from CPP
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void StartAiming();
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void StopAiming();
 
@@ -92,6 +94,9 @@ private:
 	// Functions and properties for throwing
 	void ThrowAim();
 	bool IsFrozen = false;
+	float AimTimer = 0.f;
+	float AimTime = 0.5f;
+	bool AimByHolding = false;
 	bool IsAiming = false;
 	FVector FreezeLocation;
 	bool ThrowAimTrace(FHitResult& OutHitResult) const;

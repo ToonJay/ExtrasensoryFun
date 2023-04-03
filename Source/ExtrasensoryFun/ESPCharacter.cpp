@@ -180,8 +180,8 @@ void AESPCharacter::Tick(float DeltaTime) {
 	}
 
 	// Activate the emitter when grabbing at least 1 object, deactivate when not
-	if (CastEmitter && AimEmitter) {
-		if (IsGrabbingObject()) {
+	if (CastEmitter) {
+		if (IsGrabbingObject() && !AimEmitter->IsActive()) {
 			if (!CastEmitter->IsActive()) {
 				CastEmitter->Activate();
 			}
@@ -234,6 +234,14 @@ void AESPCharacter::Tick(float DeltaTime) {
 		JumpCount = 0;
 	}
 
+	// Continuously substract from AimTimer with delta seconds
+	// AimTimer gets set to AimTime in ThrowAim()
+	// If timer runs out, and the character is frozen, but not aiming, then ThrowAim()
+	if (AimTimer > 0.f && AimByHolding) {
+		AimTimer -= GetWorld()->GetDeltaSeconds();
+	} else if (AimTimer <= 0.f && IsFrozen && !IsAiming) {
+		ThrowAim();
+	}
 	// Cancel Aim and Stop Aiming when not targeting, aiming or frozen
 	if (!Target.GetActor() && !IsAiming && !IsFrozen) {
 		CancelAim();
@@ -455,18 +463,17 @@ void AESPCharacter::Grab() {
 * Checks all physics handle components for grabbed objects and releases them.
 */
 void AESPCharacter::Release() {
-	if (!IsFrozen) {
-		for (int i = 0; i < PhysicsHandles.Num(); i++) {
-			if (UPrimitiveComponent* GrabbedComponent = PhysicsHandles[i]->GetGrabbedComponent()) {
-				GrabbedComponent->WakeAllRigidBodies(); // In case the object is sleeping
-				GrabbedComponent->GetOwner()->Tags.Remove("Grabbed");
-				// Re-enable gravity
-				GrabbedComponent->SetEnableGravity(true);
-				PhysicsHandles[i]->ReleaseComponent();
-				TelekinesisDecals[i]->DestroyComponent();
-			}
+	for (int i = 0; i < PhysicsHandles.Num(); i++) {
+		if (UPrimitiveComponent* GrabbedComponent = PhysicsHandles[i]->GetGrabbedComponent()) {
+			GrabbedComponent->WakeAllRigidBodies(); // In case the object is sleeping
+			GrabbedComponent->GetOwner()->Tags.Remove("Grabbed");
+			// Re-enable gravity
+			GrabbedComponent->SetEnableGravity(true);
+			PhysicsHandles[i]->ReleaseComponent();
+			TelekinesisDecals[i]->DestroyComponent();
 		}
 	}
+	CancelAim();
 }
 
 /*
@@ -479,6 +486,9 @@ void AESPCharacter::Release() {
 void AESPCharacter::ThrowAim() {
 	if (IsGrabbingObject()) {
 		if (!IsFrozen) {
+			// Start AimTimer and AimByHolding
+			AimTimer = AimTime;
+			AimByHolding = true;
 			// Center camera if no target
 			FreezeLocation = GetActorLocation();
 			if (!Target.GetActor()) {
@@ -506,6 +516,7 @@ void AESPCharacter::ThrowAim() {
 					AimEmitter->Activate();
 				}
 			}
+			StartAiming();
 		}
 	}
 }
@@ -579,6 +590,7 @@ int AESPCharacter::GetFarthestGrabbedObject() const {
 */
 void AESPCharacter::Throw() {
 	// Check if there's currently at least one object being grabbed and if we're aiming
+	// Otherwise, stop AimByHolding
 	if (IsGrabbingObject() && IsAiming) {
 		int ThrowIndex;
 		FHitResult HitResult;
@@ -625,6 +637,9 @@ void AESPCharacter::Throw() {
 		if (AimEmitter) {
 			AimEmitter->Deactivate();
 		}
+	} else {
+		// Stop AimByHolding
+		AimByHolding = false;
 	}
 }
 
@@ -633,6 +648,9 @@ void AESPCharacter::CancelAim() {
 	if (IsFrozen) {
 		IsFrozen = false;
 		IsAiming = false;
+		if (AimEmitter) {
+			AimEmitter->Deactivate();
+		}
 	}
 }
 
@@ -725,6 +743,10 @@ void AESPCharacter::AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, in
 	} else {
 		UE_LOG(LogTemp, Error, TEXT("No decal material set!"));
 	}
+}
+
+// Allows Blueprint implementation of these CPP functions
+void AESPCharacter::StartAiming_Implementation() {
 }
 
 void AESPCharacter::StopAiming_Implementation() {
