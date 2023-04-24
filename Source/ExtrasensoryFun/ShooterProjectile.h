@@ -47,6 +47,11 @@ private:
 	float Damage = 100.f;
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float ExplosionRadius = 300.f;
+	// Sounds
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	USoundBase* LaunchSound;
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	USoundBase* HitSound;
 
 	// OnHit event
 	UFUNCTION()

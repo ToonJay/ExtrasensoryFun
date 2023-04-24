@@ -10,6 +10,7 @@
 #include <Kismet/KismetMathLibrary.h>
 #include "Engine/StaticMeshActor.h"
 #include "Blueprint/UserWidget.h"
+#include <Kismet/GameplayStatics.h>
 
 // Default constructor
 ABaseCharacter::ABaseCharacter() {
@@ -97,6 +98,10 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 // Handle character death
 void ABaseCharacter::HandleDeath() {
+	// Play death sound
+	if (DeathSound) {
+		UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
+	}
 	// Detach controller
 	DetachFromControllerPendingDestroy();
 	// Remove collisions

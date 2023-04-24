@@ -43,7 +43,9 @@ void AShooterProjectile::BeginPlay() {
 
 	// Add function to delegate
 	ProjectileMesh->OnComponentHit.AddDynamic(this, &AShooterProjectile::OnHit);
-
+	if (LaunchSound) {
+		UGameplayStatics::PlaySoundAtLocation(this, LaunchSound, GetActorLocation());
+	}
 }
 
 // Called every frame
@@ -70,6 +72,9 @@ void AShooterProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 		// Play explosion FX if there is one
 		if (ExplosionFX) {
 			UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionFX, Hit.ImpactPoint, GetActorRotation());
+		}
+		if (HitSound) {
+			UGameplayStatics::PlaySoundAtLocation(this, HitSound, GetActorLocation());
 		}
 	}
 	// Destroy projectile

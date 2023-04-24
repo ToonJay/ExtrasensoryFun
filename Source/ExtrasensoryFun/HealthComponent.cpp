@@ -39,7 +39,7 @@ void UHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 // Take damage
 void UHealthComponent::DamageTaken(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* Instigator, AActor* DamageCauser) {
 	// Check if there's damage and if the actor can die
-	if (Damage <= 0.f || !CanDie) return;
+	if (Health <= 0.f || Damage <= 0.f || !CanDie) return;
 	UE_LOG(LogTemp, Warning, TEXT("Damage: %f"), Damage);
 	// Apply damage
 	Health -= Damage;

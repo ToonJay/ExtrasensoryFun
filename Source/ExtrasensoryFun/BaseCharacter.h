@@ -36,6 +36,9 @@ protected:
 	// Health component
 	UPROPERTY(EditAnywhere, Category = "Components")
 	UHealthComponent* Health;
+	// Sound components
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	class USoundBase* DeathSound;
 
 	// ----Camera-----
 	FHitResult Target;
