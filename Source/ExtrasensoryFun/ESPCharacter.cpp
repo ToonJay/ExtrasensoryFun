@@ -133,6 +133,23 @@ void AESPCharacter::BeginPlay() {
 void AESPCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 
+	// Character's speed
+	FVector RelativeVelocity = GetActorRotation().UnrotateVector(GetVelocity());
+	if (((FMath::Abs(RelativeVelocity.X) + FMath::Abs(RelativeVelocity.Y)) > 400)) {
+
+		FootstepTimer -= GetWorld()->GetDeltaSeconds() / 1200 * FMath::Clamp((FMath::Abs(RelativeVelocity.X) + FMath::Abs(RelativeVelocity.Y)), 0, 1200);
+		if (FootstepSound && (FootstepTimer <= 0)) {
+			UGameplayStatics::PlaySoundAtLocation(this, FootstepSound, GetActorLocation());
+			FootstepTimer = FootstepTime;
+		}
+	} else {
+		FootstepTimer = FootstepTime;
+	}
+	
+	if (GetCharacterMovement()->IsFalling()) {
+		FootstepTimer = FootstepTime;
+	}
+
 	/**
 	* Set the location and rotation of each grabbed object.
 	* TargetLocation is always set to the relative position from the character assigned during grabbing, except for the Z axis.
