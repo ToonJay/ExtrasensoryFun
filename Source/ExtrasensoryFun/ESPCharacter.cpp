@@ -135,9 +135,12 @@ void AESPCharacter::Tick(float DeltaTime) {
 
 	// Character's speed
 	FVector RelativeVelocity = GetActorRotation().UnrotateVector(GetVelocity());
-	if (((FMath::Abs(RelativeVelocity.X) + FMath::Abs(RelativeVelocity.Y)) > 400)) {
 
+	// Play FootstepSound if the character is at least going at a certain speed, otherwise simply reset FootstepTimer
+	if (((FMath::Abs(RelativeVelocity.X) + FMath::Abs(RelativeVelocity.Y)) > 400)) {
+		// Timer for FootstepSound changes depending on character's speed
 		FootstepTimer -= GetWorld()->GetDeltaSeconds() / 1200 * FMath::Clamp((FMath::Abs(RelativeVelocity.X) + FMath::Abs(RelativeVelocity.Y)), 0, 1200);
+		// If there's a FootstepSound and FootstepTimer reaches 0, play FootstepSound and reset FootstepTimer
 		if (FootstepSound && (FootstepTimer <= 0)) {
 			UGameplayStatics::PlaySoundAtLocation(this, FootstepSound, GetActorLocation());
 			FootstepTimer = FootstepTime;
@@ -145,7 +148,7 @@ void AESPCharacter::Tick(float DeltaTime) {
 	} else {
 		FootstepTimer = FootstepTime;
 	}
-	
+	// Reset FootstepTimer if character is falling
 	if (GetCharacterMovement()->IsFalling()) {
 		FootstepTimer = FootstepTime;
 	}
@@ -527,11 +530,10 @@ void AESPCharacter::ThrowAim() {
 			JumpMaxHoldTime = 0.3f;
 			JumpCount = 0;
 		} else {
+			// Start aiming + aiming FX
 			IsAiming = true;
 			if (AimEmitter) {
-				if (!AimEmitter->IsActive()) {
-					AimEmitter->Activate();
-				}
+				AimEmitter->Activate();
 			}
 			StartAiming();
 		}

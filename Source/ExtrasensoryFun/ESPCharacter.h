@@ -152,7 +152,7 @@ private:
 	// Attaches a decal to an object being grabbed
 	void AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, int Index);
 
-	// Footsteps sound
+	// Footstep sound
 	UPROPERTY(EditAnywhere, Category = "Sound FX")
 	USoundBase* FootstepSound;
 	float FootstepTimer = 0.f;
