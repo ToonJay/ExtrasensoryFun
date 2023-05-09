@@ -27,6 +27,9 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// Character jump
+	virtual void Jump() override;
+
 	// -----Components-----
 	// Spring and camera components for player characters
 	UPROPERTY(VisibleAnywhere, Category = "Components")
@@ -37,11 +40,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Components")
 	UHealthComponent* Health;
 	// Sound components
-	UPROPERTY(EditAnywhere, Category = "Combat")
+	UPROPERTY(EditAnywhere, Category = "Sound FX")
 	class USoundBase* DeathSound;
+	UPROPERTY(EditAnywhere, Category = "Sound FX")
+	USoundBase* FootstepSound;
+	UPROPERTY(EditAnywhere, Category = "Sound FX")
+	float FootstepTime = 0.25f;
+	UPROPERTY(EditAnywhere, Category = "Sound FX")
+	USoundBase* JumpingSound;
 
 	// ----Camera-----
 	FHitResult Target;
+	UPROPERTY(EditAnywhere, Category = "Camera")
 	float LockOnDistanceLimit = 2400.f;
 	FVector PositionFromChar(UPrimitiveComponent* Component) const;
 	virtual void TargetLockOn(); // virtual since Targetting will have difference effects depending on the character in use
@@ -58,7 +68,11 @@ public:
 	// Reset targeting for player
 	void ResetTargeting();
 
-	// Getter methods
+	// -----Setter Methods-----
+	UFUNCTION(BlueprintCallable)
+	void SetFootstepSound(USoundBase* NewFootstepSound) { FootstepSound = NewFootstepSound; }
+
+	// -----Getter methods-----
 	USpringArmComponent* GetSpringArm() const { return SpringArm; }
 	UCameraComponent* GetCamera() const { return Camera; }
 	UFUNCTION(BlueprintPure)
@@ -71,13 +85,15 @@ private:
 
 	// -----Camera-----
 	void LookRightRate(float AxisValue);
-	UPROPERTY(EditAnywhere, Category = "Components")
+	UPROPERTY(EditAnywhere, Category = "Camera")
 	float RotationRate = 70.f;
 	void ZoomCamera(float AxisValue);
 	void ZoomCameraRate(float AxisValue);
 	void CenterCameraBehindCharacter();
-	
 	UPROPERTY(EditAnywhere)
 	UStaticMesh* TargetArrowMesh;
 	AStaticMeshActor* TargetArrow;
+
+	// Footstep timer
+	float FootstepTimer = 0.f;
 };

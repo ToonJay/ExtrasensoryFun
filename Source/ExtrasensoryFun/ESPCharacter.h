@@ -69,8 +69,6 @@ public:
 	// Setter Methods
 	void SetIsFrozen(bool bIsFrozen) { IsFrozen = bIsFrozen; }
 	void SetIsAiming(bool bIsAiming) { IsAiming = bIsAiming; }
-	UFUNCTION(BlueprintCallable)
-	void SetFootstepSound(USoundBase* NewFootstepSound) { FootstepSound = NewFootstepSound; }
 
 	// Blueprint functions to call from CPP
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
@@ -151,10 +149,4 @@ private:
 	UMaterialInstance* TelekinesisDecalMaterial;
 	// Attaches a decal to an object being grabbed
 	void AttachTelekinesisDecal(UPrimitiveComponent* HitComponent, int Index);
-
-	// Footstep sound
-	UPROPERTY(EditAnywhere, Category = "Sound FX")
-	USoundBase* FootstepSound;
-	float FootstepTimer = 0.f;
-	float FootstepTime = 0.25f;
 };

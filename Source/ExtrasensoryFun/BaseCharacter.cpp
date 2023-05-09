@@ -48,6 +48,16 @@ void ABaseCharacter::BeginPlay() {
 	Super::BeginPlay();
 }
 
+// Character jump
+void ABaseCharacter::Jump() {
+	Super::Jump();
+
+	// Player sound fx
+	if (JumpingSound && !GetCharacterMovement()->IsFalling()) {
+		UGameplayStatics::PlaySoundAtLocation(this, JumpingSound, GetActorLocation());
+	}
+}
+
 // Get component's relative position from the Character
 FVector ABaseCharacter::PositionFromChar(UPrimitiveComponent* Component) const {
 	return Component->GetComponentTransform().GetRelativeTransform(GetActorTransform()).GetLocation();
@@ -74,6 +84,27 @@ void ABaseCharacter::Tick(float DeltaTime) {
 		}
 		SpringArm->SetRelativeLocation(FVector(0.f, 0.f, 90.f));
 	}
+
+	// Character's speed
+	FVector RelativeVelocity = GetActorRotation().UnrotateVector(GetVelocity());
+	// Character's MaxWalkSpeed
+	float MaxWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
+	// Play FootstepSound if the character is at least going at a certain speed, otherwise simply reset FootstepTimer
+	if (((FMath::Abs(RelativeVelocity.X) + FMath::Abs(RelativeVelocity.Y)) > MaxWalkSpeed / 3)) {
+		// Timer for FootstepSound changes depending on character's speed
+		FootstepTimer -= GetWorld()->GetDeltaSeconds() / MaxWalkSpeed * FMath::Clamp((FMath::Abs(RelativeVelocity.X) + FMath::Abs(RelativeVelocity.Y)), 0, MaxWalkSpeed);
+		// If there's a FootstepSound and FootstepTimer reaches 0, play FootstepSound and reset FootstepTimer
+		if (FootstepSound && (FootstepTimer <= 0)) {
+			UGameplayStatics::PlaySoundAtLocation(this, FootstepSound, GetActorLocation());
+			FootstepTimer = FootstepTime;
+		}
+	} else {
+		FootstepTimer = FootstepTime;
+	}
+	// Reset FootstepTimer if character is falling
+	if (GetCharacterMovement()->IsFalling()) {
+		FootstepTimer = FootstepTime;
+	}
 }
 
 // Called to bind functionality to player input
@@ -81,7 +112,7 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	// Character movement player input binds
-	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Pressed, this, &ABaseCharacter::Jump);
 	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Released, this, &ACharacter::StopJumping);
 	PlayerInputComponent->BindAxis(TEXT("MoveForward"), this, &ABaseCharacter::MoveForward);
 	PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &ABaseCharacter::MoveRight);
@@ -110,6 +141,7 @@ void ABaseCharacter::HandleDeath() {
 	GetMesh()->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECR_Ignore);
 }
 
+// Reset character's targeting
 void ABaseCharacter::ResetTargeting() {
 	// Destroy the target arrow
 	if (TargetArrow) {
